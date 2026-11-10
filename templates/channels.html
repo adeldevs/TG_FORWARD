@@ -408,14 +408,27 @@
     <div class="card">
       <h3>
         <span>Forwarder Engine</span>
-        <span id="forwarderBadge" class="status-badge {% if forwarder_running %}badge-running{% else %}badge-paused{% endif %}">
+        <span id="forwarderBadge" class="status-badge {% if forwarder_stats.migrating %}badge-public{% elif forwarder_running %}badge-running{% else %}badge-paused{% endif %}">
           <span style="font-size:1.1em;">●</span>
-          <span id="forwarderStatusText">{% if forwarder_running %}Running & Listening{% else %}Paused / Inactive{% endif %}</span>
+          <span id="forwarderStatusText">
+            {% if forwarder_stats.migrating %}
+              Catching Up (#{{ forwarder_stats.current_msg_id or '...' }})
+            {% elif forwarder_running %}
+              Running & Listening
+            {% else %}
+              Paused / Inactive
+            {% endif %}
+          </span>
         </span>
       </h3>
       <p style="margin:0 0 0.75rem; color:var(--text-muted); font-size:0.9rem;">
-        Automatically captures new messages arriving in your selected <strong>Source</strong> channels and sends them to your selected <strong>Destination</strong> channels.
+        Automatically captures messages arriving in your selected <strong>Source</strong> channels and sends them to your selected <strong>Destination</strong> channels.
       </p>
+
+      <div id="migrationBanner" style="display:{% if forwarder_stats.migrating %}block{% else %}none{% endif %}; background:#eff6ff; border:1px solid #bfdbfe; color:#1e40af; padding:0.65rem 1rem; border-radius:6px; margin:0.75rem 0; font-size:0.9rem;">
+        <strong>🔄 Catching up historical messages:</strong> Processing message <span id="statCurrentMsg" style="font-weight:bold;">#{{ forwarder_stats.current_msg_id or '...' }}</span> of ~<span id="statLatestMsg">#{{ forwarder_stats.latest_msg_id or '...' }}</span>...
+      </div>
+
       <div class="stats-row">
         <div class="stat-item">
           <span class="stat-val" id="statForwarded" style="color:var(--success);">{{ forwarder_stats.forwarded or 0 }}</span>
@@ -440,13 +453,47 @@
           <span class="stat-label">Last Activity</span>
         </div>
       </div>
-      <div style="margin-top:1rem; display:flex; gap:0.5rem;">
+
+      <div style="margin-top:1rem; display:flex; gap:0.5rem; flex-wrap:wrap;">
         <form method="post" action="/forwarder/start" style="display:inline;">
           <button type="submit" class="btn btn-success btn-sm">▶ Start Forwarder</button>
         </form>
         <form method="post" action="/forwarder/stop" style="display:inline;">
           <button type="submit" class="btn btn-outline btn-sm">⏸ Pause Forwarder</button>
         </form>
+      </div>
+
+      <!-- FORWARD FROM SPECIFIC STARTING MESSAGE SECTION -->
+      <div style="background:#f8fafc; border:1px solid var(--border); border-radius:8px; padding:1rem; margin-top:1.25rem;">
+        <h4 style="margin:0 0 0.4rem; font-size:0.95rem; display:flex; align-items:center; gap:0.4rem; color:var(--text);">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          Forward Starting From Specific Message
+        </h4>
+        <p style="margin:0 0 0.75rem; font-size:0.85rem; color:var(--text-muted);">
+          Enter a starting message ID (e.g. <code>963090</code>) or paste a Telegram message link (e.g. <code>https://t.me/c/1479985654/963090</code>). The forwarder will copy all messages starting from that message forward, and then continue listening live.
+        </p>
+        <form method="post" action="/forwarder/start" style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center;">
+          <input type="text" name="start_message_id" id="startMessageInput" placeholder="Message ID or link (e.g. 963090)" value="{{ current_checkpoint or '' }}" style="flex:1; min-width:240px; padding:0.55rem 0.85rem; border:1px solid var(--border); border-radius:6px; font-size:0.9rem;">
+          {% if source_channels|length > 1 %}
+            <select name="channel_id" style="padding:0.55rem 0.85rem; border:1px solid var(--border); border-radius:6px; background:#fff; font-size:0.85rem;">
+              <option value="">Apply to all sources</option>
+              {% for s in source_channels %}
+                <option value="{{ s.id }}">{{ s.title }}</option>
+              {% endfor %}
+            </select>
+          {% endif %}
+          <button type="submit" class="btn btn-primary btn-sm" style="font-weight:700;">🚀 Start From This Message</button>
+        </form>
+        <div style="margin-top:0.6rem; display:flex; gap:1rem; flex-wrap:wrap; align-items:center; font-size:0.85rem;">
+          <form method="post" action="/forwarder/skip-to-latest" style="display:inline;">
+            <button type="submit" class="btn btn-outline btn-sm" style="font-size:0.8rem; padding:0.25rem 0.6rem;" title="Mark all past messages as processed so only new messages are forwarded">
+              ⏭ Skip History (Live Messages Only)
+            </button>
+          </form>
+          <span style="color:var(--text-muted);">
+            Current Checkpoint: <strong id="lblCheckpoint">{% if current_checkpoint %}#{{ current_checkpoint }}{% else %}Live incoming only{% endif %}</strong>
+          </span>
+        </div>
       </div>
     </div>
 
@@ -705,13 +752,26 @@
         if (data.forwarder) {
           const badge = document.getElementById('forwarderBadge');
           const txt = document.getElementById('forwarderStatusText');
-          if (data.forwarder.running) {
+          const migrationBanner = document.getElementById('migrationBanner');
+
+          if (data.forwarder.migrating) {
+            badge.className = 'status-badge badge-public';
+            txt.innerText = 'Catching Up (#' + (data.forwarder.current_msg_id || '...') + ')';
+            if (migrationBanner) {
+              migrationBanner.style.display = 'block';
+              document.getElementById('statCurrentMsg').innerText = '#' + (data.forwarder.current_msg_id || '...');
+              document.getElementById('statLatestMsg').innerText = '#' + (data.forwarder.latest_msg_id || '...');
+            }
+          } else if (data.forwarder.running) {
             badge.className = 'status-badge badge-running';
             txt.innerText = 'Running & Listening';
+            if (migrationBanner) migrationBanner.style.display = 'none';
           } else {
             badge.className = 'status-badge badge-paused';
             txt.innerText = 'Paused / Inactive';
+            if (migrationBanner) migrationBanner.style.display = 'none';
           }
+
           if (data.forwarder.forwarded !== undefined) {
             document.getElementById('statForwarded').innerText = data.forwarder.forwarded;
           }
@@ -720,6 +780,12 @@
           }
           if (data.forwarder.last_event) {
             document.getElementById('statLastEvent').innerText = data.forwarder.last_event;
+          }
+          if (data.forwarder.checkpoint !== undefined) {
+            const lbl = document.getElementById('lblCheckpoint');
+            if (lbl) {
+              lbl.innerText = data.forwarder.checkpoint ? ('#' + data.forwarder.checkpoint) : 'Live incoming only';
+            }
           }
         }
         if (data.sources) {

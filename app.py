@@ -168,6 +168,55 @@ def _resolve_channel_info(cid: int, cache: dict, custom_list: list):
     return {"id": cid, "title": f"Channel {cid}", "username": None, "type": "Channel"}
 
 
+def parse_telegram_message_link(raw_val):
+    """
+    Parse a message ID and optional channel ID from an integer, message ID, or link.
+    Returns (channel_id or None, message_id or None).
+    """
+    if not raw_val:
+        return None, None
+    val = str(raw_val).strip()
+    if "/" in val:
+        parts = [p.split("?")[0] for p in val.split("/") if p]
+        try:
+            msg_id = int(parts[-1])
+        except ValueError:
+            return None, None
+        chan_id = None
+        if len(parts) >= 2 and parts[-2].isdigit():
+            raw_cid = parts[-2]
+            chan_id = -int(f"100{raw_cid}") if not raw_cid.startswith("-") else int(raw_cid)
+        return chan_id, msg_id
+    try:
+        return None, int(val)
+    except ValueError:
+        return None, None
+
+
+def parse_message_id(raw_val):
+    """Extract numeric message ID from integer or Telegram link."""
+    _, msg_id = parse_telegram_message_link(raw_val)
+    return msg_id
+
+
+def load_checkpoint(chat_id=None):
+    """Load last processed message ID from state.json."""
+    if not os.path.exists(STATE_FILE):
+        return None
+    try:
+        with open(STATE_FILE, "r") as f:
+            state = json.load(f)
+        if chat_id:
+            c = state.get("checkpoints", {}).get(str(chat_id))
+            if c is not None:
+                return int(c)
+        if "last_id" in state and state["last_id"]:
+            return int(state["last_id"])
+        return None
+    except Exception:
+        return None
+
+
 def save_checkpoint(chat_id, msg_id):
     state = {}
     if os.path.exists(STATE_FILE):
@@ -245,10 +294,16 @@ def _run(coro, timeout=30):
 _client = None
 _phone_code_hashes = {}
 _forwarder_handler = None
+_migration_task = None
 _forwarder_stats = {
     "running": False,
     "forwarded": 0,
     "skipped": 0,
+    "scanned": 0,
+    "current_msg_id": None,
+    "latest_msg_id": None,
+    "migrating": False,
+    "start_id": None,
     "last_event": None,
     "error": None,
 }
@@ -281,10 +336,86 @@ async def _is_authorized():
 
 
 # ------------------------------------------------------------------
-# Background Forwarder Engine
+# Background Forwarder Engine (Catch-up from start_id + Live listener)
 # ------------------------------------------------------------------
-async def _setup_forwarder_async():
-    global _forwarder_handler, _forwarder_stats
+async def _catchup_historical_messages(sources, target_entities, custom_start_id=None):
+    global _forwarder_stats
+    _forwarder_stats["migrating"] = True
+    client = _get_client()
+
+    for sid in sources:
+        if not _forwarder_stats["running"]:
+            break
+
+        try:
+            source_ent = await client.get_entity(sid)
+        except Exception as e:
+            print(f"[Catchup] Could not get entity {sid}: {e}")
+            continue
+
+        start_id = custom_start_id if custom_start_id is not None else load_checkpoint(sid)
+        if not start_id:
+            continue
+
+        try:
+            latest_messages = await client.get_messages(source_ent, limit=1)
+            latest_id = latest_messages[0].id if latest_messages else start_id
+        except Exception:
+            latest_id = start_id
+
+        _forwarder_stats["start_id"] = start_id
+        _forwarder_stats["latest_msg_id"] = latest_id
+        _forwarder_stats["current_msg_id"] = start_id
+
+        print(f"[Catchup] Starting channel {sid} from message ID {start_id} to latest {latest_id}")
+
+        min_id = max(0, start_id - 1)
+        try:
+            async for message in client.iter_messages(source_ent, reverse=True, min_id=min_id):
+                if not _forwarder_stats["running"]:
+                    break
+
+                _forwarder_stats["current_msg_id"] = message.id
+                _forwarder_stats["scanned"] += 1
+
+                media_type = classify_media(message)
+                allowed = allowed_media_types()
+                if allowed is not None:
+                    if not media_type or media_type not in allowed:
+                        _forwarder_stats["skipped"] += 1
+                        save_checkpoint(sid, message.id)
+                        continue
+
+                success = False
+                for target in target_entities:
+                    try:
+                        if message.media:
+                            await client.send_file(target, message.media, caption=message.text or "")
+                        elif message.text:
+                            await client.send_message(target, message.text)
+                        success = True
+                    except FloodWaitError as e:
+                        _forwarder_stats["error"] = f"FloodWait: sleeping {e.seconds}s"
+                        await asyncio.sleep(e.seconds)
+                    except Exception as e:
+                        _forwarder_stats["error"] = str(e)
+
+                if success:
+                    _forwarder_stats["forwarded"] += 1
+                    _forwarder_stats["last_event"] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    save_checkpoint(sid, message.id)
+
+                await asyncio.sleep(1.5)
+        except Exception as e:
+            print(f"[Catchup Error] channel {sid}: {e}")
+            _forwarder_stats["error"] = str(e)
+
+    _forwarder_stats["migrating"] = False
+    print("[Catchup] Historical catchup finished! Continuing with live listening.")
+
+
+async def _setup_forwarder_async(start_id=None):
+    global _forwarder_handler, _forwarder_stats, _migration_task
     client = _get_client()
     if not client or not client.is_connected() or not await client.is_user_authorized():
         _forwarder_stats["running"] = False
@@ -303,6 +434,9 @@ async def _setup_forwarder_async():
         except Exception:
             pass
         _forwarder_handler = None
+
+    if _migration_task and not _migration_task.done():
+        _migration_task.cancel()
 
     # Resolve target entities
     target_entities = []
@@ -330,6 +464,7 @@ async def _setup_forwarder_async():
         if allowed is not None:
             if not media_type or media_type not in allowed:
                 _forwarder_stats["skipped"] += 1
+                save_checkpoint(event.chat_id, message.id)
                 return
 
         success_any = False
@@ -355,20 +490,32 @@ async def _setup_forwarder_async():
     client.add_event_handler(forwarder_event_handler, events.NewMessage)
     _forwarder_stats["running"] = True
     _forwarder_stats["error"] = None
+
+    # Check if historical catch-up should run
+    effective_start = start_id
+    if effective_start is None and sources:
+        effective_start = load_checkpoint(sources[0])
+
+    if effective_start:
+        _migration_task = asyncio.create_task(_catchup_historical_messages(sources, target_entities, effective_start))
+
     return True
 
 
-def _start_forwarder():
+def _start_forwarder(start_id=None):
     try:
-        return _run(_setup_forwarder_async(), timeout=15)
+        return _run(_setup_forwarder_async(start_id=start_id), timeout=15)
     except Exception as e:
         _forwarder_stats["error"] = str(e)
         return False
 
 
 def _stop_forwarder():
-    global _forwarder_handler, _forwarder_stats
+    global _forwarder_handler, _forwarder_stats, _migration_task
     _forwarder_stats["running"] = False
+    _forwarder_stats["migrating"] = False
+    if _migration_task and not _migration_task.done():
+        _migration_task.cancel()
     client = _get_client()
     if client and _forwarder_handler:
         try:
@@ -666,6 +813,9 @@ def channels():
     source_channels = [_resolve_channel_info(cid, cache, custom_chans) for cid in source_ids]
     target_channels = [_resolve_channel_info(cid, cache, custom_chans) for cid in target_ids]
 
+    first_source = source_ids[0] if source_ids else None
+    current_checkpoint = load_checkpoint(first_source) if first_source else None
+
     # Automatically start forwarder if configured and not yet running
     if source_ids and target_ids and not _forwarder_stats["running"]:
         _start_forwarder()
@@ -679,6 +829,7 @@ def channels():
         target_channels=target_channels,
         selected_source_ids=source_ids,
         selected_target_ids=target_ids,
+        current_checkpoint=current_checkpoint,
         media_types=env.get("ALLOW_MEDIA_TYPES", "all"),
         forwarder_running=_forwarder_stats["running"],
         forwarder_stats=_forwarder_stats,
@@ -906,18 +1057,70 @@ def set_media_types():
 
 
 # ------------------------------------------------------------------
-# 10. Forwarder start / stop controls
+# 10. Forwarder start / stop / skip controls
 # ------------------------------------------------------------------
 @app.route("/forwarder/start", methods=["POST"])
 def forwarder_start():
-    _start_forwarder()
-    return redirect(url_for("channels"))
+    raw_id = request.form.get("start_message_id", "").strip()
+    cid_raw = request.form.get("channel_id", "").strip()
+    link_cid, start_id = parse_telegram_message_link(raw_id)
+
+    if start_id is not None:
+        target_cid = None
+        if cid_raw:
+            try:
+                target_cid = int(cid_raw)
+            except ValueError:
+                pass
+        elif link_cid:
+            target_cid = link_cid
+
+        sources = _get_sources()
+        if target_cid:
+            save_checkpoint(target_cid, start_id)
+        elif sources:
+            for sid in sources:
+                save_checkpoint(sid, start_id)
+        else:
+            save_checkpoint("default", start_id)
+
+    _start_forwarder(start_id=start_id)
+    msg = f"Forwarder started from message #{start_id}!" if start_id else "Forwarder started!"
+    return redirect(url_for("channels", msg=msg))
 
 
 @app.route("/forwarder/stop", methods=["POST"])
 def forwarder_stop():
     _stop_forwarder()
-    return redirect(url_for("channels"))
+    return redirect(url_for("channels", msg="Forwarder paused."))
+
+
+@app.route("/forwarder/skip-to-latest", methods=["POST"])
+def forwarder_skip_to_latest():
+    client = _get_client()
+    sources = _get_sources()
+
+    async def mark_latest():
+        if not client.is_connected():
+            await client.connect()
+        for sid in sources:
+            try:
+                ent = await client.get_entity(sid)
+                latest = await client.get_messages(ent, limit=1)
+                if latest:
+                    save_checkpoint(sid, latest[0].id)
+            except Exception as e:
+                print(f"[Skip Latest Error] {sid}: {e}")
+
+    try:
+        _run(mark_latest(), timeout=15)
+    except Exception:
+        pass
+
+    if _forwarder_stats["running"]:
+        _start_forwarder()
+
+    return redirect(url_for("channels", msg="Checkpoint advanced to latest message. Historical backlog skipped."))
 
 
 # ------------------------------------------------------------------
@@ -936,6 +1139,9 @@ def current():
     from_names = ", ".join(s["title"] for s in sources_info) or "None selected"
     to_names = ", ".join(t["title"] for t in targets_info) or "None selected"
 
+    first_source = source_ids[0] if source_ids else None
+    current_checkpoint = load_checkpoint(first_source) if first_source else None
+
     return jsonify({
         "from": from_names,
         "to": to_names,
@@ -944,10 +1150,16 @@ def current():
         "media_types": os.getenv("ALLOW_MEDIA_TYPES") or _read_env().get("ALLOW_MEDIA_TYPES", "all"),
         "forwarder": {
             "running": _forwarder_stats["running"],
+            "migrating": _forwarder_stats["migrating"],
+            "current_msg_id": _forwarder_stats["current_msg_id"],
+            "latest_msg_id": _forwarder_stats["latest_msg_id"],
+            "start_id": _forwarder_stats["start_id"],
+            "scanned": _forwarder_stats["scanned"],
             "forwarded": _forwarder_stats["forwarded"],
             "skipped": _forwarder_stats["skipped"],
             "last_event": _forwarder_stats["last_event"],
             "error": _forwarder_stats["error"],
+            "checkpoint": current_checkpoint,
         }
     })
 

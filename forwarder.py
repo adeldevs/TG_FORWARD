@@ -209,7 +209,26 @@ def save_last_id(chat_id, msg_id):
     logger.info(f"Saved last message ID {msg_id} for channel {chat_id}")
 
 
+def parse_message_id(raw_val):
+    """Extract numeric message ID from integer or Telegram link."""
+    if not raw_val:
+        return None
+    val = str(raw_val).strip()
+    if "/" in val:
+        parts = [p for p in val.split("/") if p]
+        val = parts[-1].split("?")[0].strip()
+    try:
+        return int(val)
+    except ValueError:
+        return None
+
+
 def load_last_id(chat_id):
+    custom_start = parse_message_id(getenv("START_MESSAGE_ID", default=None))
+    if custom_start is not None:
+        logger.info(f"Using START_MESSAGE_ID={custom_start} for channel {chat_id}")
+        return custom_start
+
     SKIP_BEFORE_ID = 963090
 
     if not os.path.exists(STATE_FILE):
