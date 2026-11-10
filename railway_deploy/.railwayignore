@@ -1,0 +1,6 @@
+*.session
+!forwarder_session.session
+!state.json
+!forwarder.py
+!requirements.txt
+!Dockerfile

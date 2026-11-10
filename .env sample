@@ -1,0 +1,10 @@
+API_ID = "your_telegram_api_id"
+API_HASH = "your_telegram_hash_api"
+
+SOURCE_CHANNEL = "source_channel" 
+TARGET_CHANNEL = "target_channel" 
+
+SESSION_NAME = "session"
+
+STATE_FILE = "state.json"
+LOG_FILE = "forwarder.log"

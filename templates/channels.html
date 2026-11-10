@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Telegram Forwarder – Channels</title>
+  <style>
+    body{font-family:system-ui,Arial,sans-serif;margin:2rem;background:#f5f5f5}
+    .container{max-width:900px;margin:auto}
+    h1{margin-bottom:1rem}
+    .panel{border:1px solid #ccc;border-radius:6px;padding:1rem;margin:1rem 0;background:#fafafa}
+    .panel h3{margin-top:0}
+    .channel{display:flex;align-items:center;margin .5rem 0}
+    .channel input{margin-right .5rem flex:0 0 150px}
+    .action{margin-left 1rem}
+  </style>
+</head>
+<body class="container">
+  <h1>Select channels / groups</h1>
+
+  <div class="panel">
+    <h3>From (source)</h3>
+    <form id="fromForm" method="post" action="/set-source">
+      <input type="hidden" name="channel_id" id="fromChannelId" value="{{ source_id }}">
+      <div id="fromDisplay">Loading…</div>
+      <button type="submit">Change</button>
+    </form>
+  </div>
+
+  <div class="panel">
+    <h3>To (target)</h3>
+    <form id="toForm" method="post" action="/set-target">
+      <input type="hidden" name="channel_id" id="toChannelId" value="{{ target_id }}">
+      <div id="toDisplay">Loading…</div>
+      <button type="submit">Change</button>
+    </form>
+  </div>
+
+  <div class="panel">
+    <h3>All available channels & groups</h3>
+    <ul>
+    {% for cid, title, is_ch, is_gr in channels %}
+      <li>
+        <label>
+          <input type="checkbox" name="channel" value="{{ cid }}" {% if cid == source_id %}disabled{% endif %} {% if cid == target_id %}disabled{% endif %}> 
+          {{ title }} ({{ cid }}) {% if is_ch %}[channel]{% elif is_gr %}[group]{% endif %}
+        </label>
+      </li>
+    {% end %}
+    </ul>
+  </div>
+
+  <div class="panel">
+    <h3>Add custom channel / group</h3>
+    <p>Paste a Telegram link or username (e.g. <code>@mychannel</code> or <code>t.me/joinchat/AbCdEfGh</code>):</p>
+    <form id="addForm" method="post" action="/add-channel">
+      <input name="link" placeholder="t.me/... or @username" required style="width:60%;padding:.4rem;">
+      <button type="submit" style="padding:.4rem 1rem;">Add</button>
+    </form>
+  </div>
+
+  <script>
+    // simple fetch to display current channel names without page reload
+    async function loadDisplay() {
+      const r = await fetch('/current');
+      const {from, to} = await r.json();
+      document.getElementById('fromDisplay').innerText = from || '—';
+      document.getElementById('toDisplay').innerText = to || '—';
+    }
+    loadDisplay();
+    setInterval(loadDisplay, 5000);
+  </script>
+</body>
+</html>

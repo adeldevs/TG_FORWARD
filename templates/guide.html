@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Telegram Forwarder – Guide</title>
+  <style>
+    body{font-family:system-ui,Arial,sans-serif;margin:2rem;background:#f5f5f5}
+    .max{max-width:800px;margin:auto}
+    h1,h2{margin-top:2rem}
+    code{background:#e2e8f0;padding:2px 4px;border-radius:4px}
+    pre{background:#e2e8f0;padding:1rem;border-radius:6px;overflow:auto}
+    .step{margin-bottom:1.5rem}
+  </style>
+</head>
+<body>
+<div class="max">
+  <h1>Telegram Message Forwarder – Full Guide</h1>
+
+  <section class="step">
+    <h2>1. What does this project do?</h2>
+    <p>This is a tiny Telegram bot that automatically forwards every new message (and optionally old messages) from one Telegram channel/group to another. It remembers the last processed message ID so you can resume after a restart.</p>
+  </section>
+
+  <section class="step">
+    <h2>2. Required Telegram credentials</h2>
+    <p>To talk to Telegram you need an <strong>API ID</strong> and <strong>API Hash</strong>. Obtain them at <a href="https://my.telegram.org" target="_blank">my.telegram.org</a> → “API Development tools” → “Create new application”. <br>
+    <code>API_ID</code> is a numeric integer.<br>
+    <code>API_HASH</code> is a 32‑character hex string.</p>
+    <p>If you already have a <em>session string</em> (the value Telethon saves after a login) you can skip entering the API ID/Hash – just paste the session string on the <strong>Config</strong> page.</p>
+  </section>
+
+  <section class="step">
+    <h2>3. Deploy the code</h2>
+    <ol>
+      <li>Clone or download this repo to your server/PC.</li>
+      <li>Create a virtual environment (recommended):<br>
+        <code>python -m venv venv</code><br>
+        <code>source venv/bin/activate</code> (Linux/macOS) or <code>venv\\Scripts\\Activate</code> (Windows).</li>
+      <li>Install dependencies:<br>
+        <code>pip install -r requirements.txt</code></li>
+      <li>Run the Flask web UI:<br>
+        <code>python app.py</code><br>
+        The console will show something like <code>Running on http://0.0.0.0:5000</code>.</li>
+      <li>Open that URL in a browser (or use the URL provided by your hosting platform, e.g. Railway, Render, Fly).</li>
+    </ol>
+  </section>
+
+  <section class="step">
+    <h2>4. Configure the bot (first run)</h2>
+    <ol>
+      <li><strong>Config page</strong> (<code>/config</code>): enter your <code>API_ID</code>, <code>API_HASH</code> and optionally a <code>SESSION_NAME</code>. If you already have a session string you can paste it in the <code>SESSION_STRING</code> field (skip the OTP steps).</li>
+      <li>Click <strong>Save & continue</strong> – the values are written to <code>.env</code>.</li>
+    </ol>
+  </section>
+
+  <section class="step">
+    <h2>5. Log in with phone + OTP</h2>
+    <ol>
+      <li>Go to <strong>/login</code> and type your Telegram phone number with country code (e.g. <code>+14155552671</code>).</li>
+      <li>Press <strong>Send OTP</strong> – you will receive a 5‑digit code via SMS (or Telegram).</li>
+      <li>Go to <strong>/otp</code> and enter the code, then press <strong>Verify</strong>.</li>
+      <li>After verification the app stores a <code>SESSION_STRING</code> in <code>.env</code> so you won’t need to type the code again.</li>
+    </ol>
+  </section>
+
+  <section class="step">
+    <h2>6. Pick source & target channels</h2>
+    <ol>
+      <li>Open <strong>/channels</code>. You will see two small tables labelled <strong>From</strong> and <strong>To</strong> showing the current channel IDs (taken from <code>.env</code>).</li>
+      <li>Below them is a list of every channel/group you belong to. Click the <strong>Change</strong> button next to <strong>From</strong> or <strong>To</strong>, select the desired channel from the list, and the ID is saved.</li>
+      <li>If you need a channel that is not in the list, use the <strong>Add custom channel / group</strong> field: paste a Telegram link (<code>t.me/...</code>) or username (<code>@mychannel</code>) and click <strong>Add</code>. The app resolves the entity and writes its ID (by default it overwrites the <strong>From</strong> channel – you can edit the code to target the <strong>To</strong> channel instead).</li>
+      <li>After you’ve set both IDs, close the browser.</li>
+    </ol>
+  </section>
+
+  <section class="step">
+    <h2>7. Run the forwarder</h2>
+    <p>Now <code>.env</code> contains the needed values. Simply run the original forwarder:</p>
+    <pre><code>python forwarder.py</code></pre>
+    <p>The script will start forwarding every new message from the selected source to the target, and it will resume from the last saved message ID if you restart it.</p>
+  </section>
+
+  <section class="step">
+    <h2>8. (Optional) Deploy on a PaaS (Railway, Render, Fly, etc.)</h2>
+    <ol>
+      <li>Push this repository to a Git host (GitHub, GitLab, Bitbucket).</li>
+      <li>Create a new project on the PaaS and point it at the repo.</li>
+      <li>The platform will run <code>python app.py</code> (or you set the start command).</li>
+      <li>Make sure the <code>.env</code> file is present in the project root; the web UI will write to it on first run, or you can pre‑populate it with your API credentials.</li>
+      <li>Once the deployment is up, open the generated URL and follow the same Config → Login → Channels flow.</li>
+    </ol>
+  </section>
+
+  <footer style="margin-top:3rem;padding-top:2rem;border-top:1px solid #ddd;font-size:0.9rem;color:#555;">
+    <p>Built with <code>Telethon</code> + <code>Flask</code>. Feel free to fork and adapt.</p>
+  </footer>
+</div>
+</body>
+</html>

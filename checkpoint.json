@@ -1,0 +1,9 @@
+{
+  "paused": true,
+  "last_processed_message_id": 717768,
+  "source_channel_id": -1001479985654,
+  "target_channel_id": -1001296335955,
+  "paused_at": "2026-10-26T12:30:54.387862Z",
+  "next_message_to_process": 717769,
+  "note": "Resume by deploying railway_deploy/ with this state.json and forwarder_session.session. Bot will continue from next_message_to_process."
+}
