@@ -85,6 +85,14 @@ def _get_client():
 
 
 # ------------------------------------------------------------------
+# Root – redirect to config
+# ------------------------------------------------------------------
+@app.route("/")
+def index():
+    return redirect(url_for("config"))
+
+
+# ------------------------------------------------------------------
 # 1️⃣  Config page – fill API / channel info
 # ------------------------------------------------------------------
 @app.route("/config", methods=["GET", "POST"])
@@ -169,6 +177,8 @@ def channels():
     target_id = int(os.getenv("TARGET_CHANNEL", "0"))
 
     async def fetch_dialogs():
+        if not client.is_connected():
+            await client.connect()
         dialogs = await client.get_dialogs()
         chans = []
         for d in dialogs:

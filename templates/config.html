@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Telegram Forwarder – Config</title>
+  <style>
+    body{font-family:system-ui,Arial,sans-serif;margin:2rem;background:#f5f5f5}
+    .container{max-width:600px;margin:auto}
+    h1{margin-bottom:1rem}
+    .panel{border:1px solid #ccc;border-radius:6px;padding:1rem;margin:1rem 0;background:#fafafa}
+    .panel h3{margin-top:0}
+    label{display:block;margin:.5rem 0 .25rem;font-weight:600}
+    input{width:100%;padding:.4rem;margin-bottom:.5rem;border:1px solid #ccc;border-radius:4px;box-sizing:border-box}
+    button{padding:.5rem 1rem;background:#2563eb;color:#fff;border:none;border-radius:4px;cursor:pointer}
+    button:hover{background:#1d4ed8}
+    .note{font-size:.85rem;color:#666;margin-top:.5rem}
+  </style>
+</head>
+<body class="container">
+  <h1>Telegram API Config</h1>
+  <form method="post" action="/config" class="panel">
+    <label>API ID</label>
+    <input name="API_ID" value="{{ api_id }}" required>
+    <label>API Hash</label>
+    <input name="API_HASH" value="{{ api_hash }}" required>
+    <label>Session Name</label>
+    <input name="SESSION_NAME" value="{{ session_name }}" placeholder="forwarder_session">
+    <label>Session String (optional, leave blank to log in fresh)</label>
+    <input name="SESSION_STRING" value="{{ session_string }}">
+    <label>Source Channel (@username or ID)</label>
+    <input name="SOURCE_CHANNEL" value="{{ source_channel }}" required>
+    <label>Target Channel (@username or ID)</label>
+    <input name="TARGET_CHANNEL" value="{{ target_channel }}" required>
+    <button type="submit">Save & Continue</button>
+  </form>
+  <p class="note">Get your API_ID and API_HASH from https://my.telegram.org/apps</p>
+</body>
+</html>
