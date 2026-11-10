@@ -173,6 +173,7 @@ def otp():
 @app.route("/channels", methods=["GET", "POST"])
 def channels():
     client = _get_client()
+    env = _read_env()
     source_id = int(os.getenv("SOURCE_CHANNEL", "0"))
     target_id = int(os.getenv("TARGET_CHANNEL", "0"))
 
@@ -194,7 +195,7 @@ def channels():
             channels=[],
             source_id=source_id,
             target_id=target_id,
-            media_types=env.get("ALLOW_MEDIA_TYPES", "all") if (env := _read_env()) else "all",
+            media_types=env.get("ALLOW_MEDIA_TYPES", "all"),
             error=f"Telegram not logged in yet: {exc}. Go to /login first.",
         )
 
