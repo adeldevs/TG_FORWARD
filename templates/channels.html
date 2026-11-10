@@ -470,10 +470,10 @@
           Forward Starting From Specific Message
         </h4>
         <p style="margin:0 0 0.75rem; font-size:0.85rem; color:var(--text-muted);">
-          Enter a starting message ID (e.g. <code>963090</code>) or paste a Telegram message link (e.g. <code>https://t.me/c/1479985654/963090</code>). The forwarder will copy all messages starting from that message forward, and then continue listening live.
+          Enter a starting message ID (e.g. <code>1000</code>) or paste a Telegram message link (e.g. <code>https://t.me/c/1234567890/1000</code>). The forwarder will copy all messages starting from that message forward, and then continue listening live.
         </p>
         <form method="post" action="/forwarder/start" style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center;">
-          <input type="text" name="start_message_id" id="startMessageInput" placeholder="Message ID or link (e.g. 963090)" value="{{ current_checkpoint or '' }}" style="flex:1; min-width:240px; padding:0.55rem 0.85rem; border:1px solid var(--border); border-radius:6px; font-size:0.9rem;">
+          <input type="text" name="start_message_id" id="startMessageInput" placeholder="Message ID or link (e.g. 1000 or link)" value="{{ current_checkpoint or '' }}" style="flex:1; min-width:240px; padding:0.55rem 0.85rem; border:1px solid var(--border); border-radius:6px; font-size:0.9rem;">
           {% if source_channels|length > 1 %}
             <select name="channel_id" style="padding:0.55rem 0.85rem; border:1px solid var(--border); border-radius:6px; background:#fff; font-size:0.85rem;">
               <option value="">Apply to all sources</option>

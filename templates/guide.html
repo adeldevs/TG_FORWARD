@@ -1,5 +1,6 @@
 <!doctype html>
 <html lang="en">
+
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -17,7 +18,11 @@
       --border: #e2e8f0;
       --radius: 10px;
     }
-    * { box-sizing: border-box; }
+
+    * {
+      box-sizing: border-box;
+    }
+
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       margin: 0;
@@ -26,6 +31,7 @@
       color: var(--text);
       line-height: 1.6;
     }
+
     .navbar {
       background: var(--card-bg);
       border-bottom: 1px solid var(--border);
@@ -34,6 +40,7 @@
       justify-content: space-between;
       align-items: center;
     }
+
     .navbar .brand {
       font-weight: 700;
       font-size: 1.15rem;
@@ -43,25 +50,31 @@
       align-items: center;
       gap: 0.5rem;
     }
+
     .nav-links {
       display: flex;
       gap: 1.25rem;
       align-items: center;
     }
+
     .nav-links a {
       color: var(--text-muted);
       text-decoration: none;
       font-size: 0.95rem;
       font-weight: 500;
     }
-    .nav-links a:hover, .nav-links a.active {
+
+    .nav-links a:hover,
+    .nav-links a.active {
       color: var(--primary);
     }
+
     .container {
       max-width: 840px;
       margin: 2rem auto 4rem;
       padding: 0 1rem;
     }
+
     .card {
       background: var(--card-bg);
       border: 1px solid var(--border);
@@ -69,11 +82,13 @@
       padding: 2.5rem;
       box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.04);
     }
+
     h1 {
       margin-top: 0;
       font-size: 1.75rem;
       color: var(--text);
     }
+
     h2 {
       margin-top: 2rem;
       font-size: 1.25rem;
@@ -81,6 +96,7 @@
       padding-bottom: 0.4rem;
       color: var(--primary);
     }
+
     code {
       background: #e2e8f0;
       padding: 2px 6px;
@@ -88,6 +104,7 @@
       font-size: 0.9em;
       font-family: monospace;
     }
+
     pre {
       background: #0f172a;
       color: #f8fafc;
@@ -96,25 +113,35 @@
       overflow-x: auto;
       font-size: 0.9em;
     }
-    ol, ul {
+
+    ol,
+    ul {
       padding-left: 1.4rem;
     }
+
     li {
       margin-bottom: 0.5rem;
     }
+
     a {
       color: var(--primary);
       text-decoration: none;
     }
+
     a:hover {
       text-decoration: underline;
     }
   </style>
 </head>
+
 <body>
   <nav class="navbar">
     <a href="/" class="brand">
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <path d="M22 2L11 13" />
+        <polygon points="22 2 15 22 11 13 2 9 22 2" />
+      </svg>
       Telegram Forwarder
     </a>
     <div class="nav-links">
@@ -130,7 +157,8 @@
 
       <h2>1. Overview</h2>
       <p>
-        This web application allows you to automatically forward messages from one or more Telegram channels/groups to one or more destination channels/groups in real time.
+        This web application allows you to automatically forward messages from one or more Telegram channels/groups to
+        one or more destination channels/groups in real time.
       </p>
 
       <h2>2. Step 1: Telegram API Credentials</h2>
@@ -138,16 +166,19 @@
         Visit the <a href="/config"><strong>Config</strong></a> page. You only need your Telegram API credentials:
       </p>
       <ul>
-        <li><code>API_ID</code>: Obtained from <a href="https://my.telegram.org" target="_blank">my.telegram.org</a>.</li>
+        <li><code>API_ID</code>: Obtained from <a href="https://my.telegram.org" target="_blank">my.telegram.org</a>.
+        </li>
         <li><code>API_HASH</code>: 32-character hexadecimal string from my.telegram.org.</li>
         <li><em>Note: You no longer need to type any channel IDs in the config!</em></li>
       </ul>
 
       <h2>3. Step 2: Log In with Phone & OTP</h2>
       <ol>
-        <li>Go to <a href="/login"><strong>Login</strong></a> and enter your Telegram phone number with international country code (e.g. <code>+918129211707</code>).</li>
+        <li>Go to <a href="/login"><strong>Login</strong></a> and enter your Telegram phone number with international
+          country code (e.g. <code>+1234567890</code>).</li>
         <li>Check Telegram on your devices for the 5-digit verification code.</li>
-        <li>Enter the code on the OTP page. If your Telegram account has Two-Step Verification (2FA cloud password) enabled, enter your password as well.</li>
+        <li>Enter the code on the OTP page. If your Telegram account has Two-Step Verification (2FA cloud password)
+          enabled, enter your password as well.</li>
       </ol>
 
       <h2>4. Step 3: Select Source & Destination Channels</h2>
@@ -155,23 +186,32 @@
         Once logged in, open <a href="/channels"><strong>Channels</strong></a>:
       </p>
       <ul>
-        <li><strong>Interactive Table</strong>: All channels and groups where your account is a member are listed with their full channel names.</li>
-        <li><strong>Multiple Selection</strong>: Use the checkboxes in the table to pick one or more <strong>Source</strong> channels and one or more <strong>Destination</strong> channels.</li>
-        <li><strong>Public Channels</strong>: If a source or destination is a public channel, use the "Add Custom or Public Channel" box with its <code>@username</code> or <code>t.me/...</code> link. It will automatically resolve the channel name and add it!</li>
+        <li><strong>Interactive Table</strong>: All channels and groups where your account is a member are listed with
+          their full channel names.</li>
+        <li><strong>Multiple Selection</strong>: Use the checkboxes in the table to pick one or more
+          <strong>Source</strong> channels and one or more <strong>Destination</strong> channels.</li>
+        <li><strong>Public Channels</strong>: If a source or destination is a public channel, use the "Add Custom or
+          Public Channel" box with its <code>@username</code> or <code>t.me/...</code> link. It will automatically
+          resolve the channel name and add it!</li>
         <li><strong>Save Selection</strong>: Click <strong>"Save Channel Selection"</strong> to apply.</li>
       </ul>
 
       <h2>5. Step 4: Media Filter & Forwarder Controls</h2>
       <ul>
-        <li><strong>Media Filter</strong>: Choose whether to forward all messages or filter by photos, videos, audio, text, or documents.</li>
-        <li><strong>Live Forwarder</strong>: The forwarder runs automatically in the background. You can pause or resume it anytime from the Channels dashboard.</li>
+        <li><strong>Media Filter</strong>: Choose whether to forward all messages or filter by photos, videos, audio,
+          text, or documents.</li>
+        <li><strong>Live Forwarder</strong>: The forwarder runs automatically in the background. You can pause or resume
+          it anytime from the Channels dashboard.</li>
       </ul>
 
       <h2>6. Logging Out & Resetting Data</h2>
       <p>
-        Click the <strong>Log Out</strong> button in the top navigation bar at any time. This will disconnect your Telegram session, terminate the login, and wipe all saved channels, state, and session files for complete privacy.
+        Click the <strong>Log Out</strong> button in the top navigation bar at any time. This will disconnect your
+        Telegram session, terminate the login, and wipe all saved channels, state, and session files for complete
+        privacy.
       </p>
     </div>
   </div>
 </body>
+
 </html>

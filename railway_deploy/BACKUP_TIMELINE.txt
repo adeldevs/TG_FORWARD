@@ -1,7 +1,0 @@
-Backup timeline (to avoid duplicate uploads):
-- Original backup started: 2026-09-29 10:20:07 (first msg 717709)
-- Paused at message 717768: 2026-09-29 10:25:43 (state saved)
-- Long break: 2026-09-29 10:25:43 -> 2026-11-05 (account/Railway switch)
-- New backup resumed: 2026-11-05 ~05:29 (from 717768), then moved to 941823
-- Skip re-uploading Sep 29 -> now (already present in target/BACK-UP)
-- Only forward messages from 941823 onward (live + historical from there)

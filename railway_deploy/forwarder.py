@@ -229,7 +229,7 @@ def load_last_id(chat_id):
         logger.info(f"Using START_MESSAGE_ID={custom_start} for channel {chat_id}")
         return custom_start
 
-    SKIP_BEFORE_ID = 963090
+    SKIP_BEFORE_ID = 0
 
     if not os.path.exists(STATE_FILE):
         return SKIP_BEFORE_ID
