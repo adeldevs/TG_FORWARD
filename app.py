@@ -205,13 +205,30 @@ def channels():
             os.environ["SOURCE_CHANNEL"] = str(eid)
             _write_env({"SOURCE_CHANNEL": eid})
             return redirect(url_for("channels"))
+        elif action == "set_media_types":
+            types = request.form.getlist("media_types")
+            value = ",".join(types)
+            os.environ["ALLOW_MEDIA_TYPES"] = value
+            _write_env({"ALLOW_MEDIA_TYPES": value})
+            return redirect(url_for("channels"))
 
     return render_template(
         "channels.html",
         channels=channels_list,
         source_id=source_id,
         target_id=target_id,
+        media_types=env.get("ALLOW_MEDIA_TYPES", "all") if (env := _read_env()) else "all",
     )
+
+
+@app.route("/set-media-types", methods=["POST"])
+def set_media_types():
+    client = _get_client()
+    types = request.form.getlist("media_types")
+    value = ",".join(types)
+    os.environ["ALLOW_MEDIA_TYPES"] = value
+    _write_env({"ALLOW_MEDIA_TYPES": value})
+    return redirect(url_for("channels"))
 
 
 @app.route("/guide")
@@ -222,7 +239,11 @@ def guide():
 @app.route("/current")
 def current():
     """AJAX endpoint – returns the two IDs so the page can display them."""
-    return jsonify(from=os.getenv("SOURCE_CHANNEL", "0"), to=os.getenv("TARGET_CHANNEL", "0"))
+    return jsonify({
+        "from": os.getenv("SOURCE_CHANNEL", "0"),
+        "to": os.getenv("TARGET_CHANNEL", "0"),
+        "media_types": os.getenv("ALLOW_MEDIA_TYPES", "all"),
+    })
 
 
 # ------------------------------------------------------------------

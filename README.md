@@ -12,6 +12,7 @@ It supports **resuming from the last message**, handles **FloodWait errors**, an
 * **Resume** from where it left off.
 * Handles **FloodWait** automatically.
 * Logging with timestamps.
+* **Media-type filter** – choose which kinds of files to forward (photos, videos, audio, text/documents) via checkboxes on the Channels page. Set `ALLOW_MEDIA_TYPES` in `.env` (e.g. `photo,video,audio`) or leave `all`.
 
 ---
 
@@ -79,6 +80,9 @@ SESSION_NAME=forwarder_session
 # State + log files
 STATE_FILE=state.json
 LOG_FILE=forwarder.log
+
+# File types to forward (photo, video, audio, text, document) or "all"
+ALLOW_MEDIA_TYPES=all
 ```
 
 ---

@@ -50,6 +50,20 @@
   </div>
 
   <div class="panel">
+    <h3>File types to forward</h3>
+    <p>Select which kinds of files to forward. Leave all unchecked (or check "all") to forward everything.</p>
+    <form id="mediaForm" method="post" action="/set-media-types">
+      <label style="margin-right:1rem;"><input type="checkbox" name="media_types" value="all" {% if media_types == "all" or media_types is none %}checked{% endif %}> All</label>
+      <label style="margin-right:1rem;"><input type="checkbox" name="media_types" value="photo" {% if "photo" in media_types %}checked{% endif %}> Photos / images</label>
+      <label style="margin-right:1rem;"><input type="checkbox" name="media_types" value="video" {% if "video" in media_types %}checked{% endif %}> Videos</label>
+      <label style="margin-right:1rem;"><input type="checkbox" name="media_types" value="audio" {% if "audio" in media_types %}checked{% endif %}> Audio</label>
+      <label style="margin-right:1rem;"><input type="checkbox" name="media_types" value="text" {% if "text" in media_types %}checked{% endif %}> Text / documents</label>
+      <label style="margin-right:1rem;"><input type="checkbox" name="media_types" value="document" {% if "document" in media_types %}checked{% endif %}> Other documents</label>
+      <button type="submit">Save</button>
+    </form>
+  </div>
+
+  <div class="panel">
     <h3>Add custom channel / group</h3>
     <p>Paste a Telegram link or username (e.g. <code>@mychannel</code> or <code>t.me/joinchat/AbCdEfGh</code>):</p>
     <form id="addForm" method="post" action="/add-channel">
@@ -62,9 +76,15 @@
     // simple fetch to display current channel names without page reload
     async function loadDisplay() {
       const r = await fetch('/current');
-      const {from, to} = await r.json();
+      const {from, to, media_types} = await r.json();
       document.getElementById('fromDisplay').innerText = from || '—';
       document.getElementById('toDisplay').innerText = to || '—';
+      const all = document.querySelector('input[value="all"]');
+      ['photo','video','audio','text','document'].forEach(v => {
+        document.querySelector('input[value="'+v+'"]').checked =
+          media_types === 'all' || media_types.includes(v);
+      });
+      all.checked = media_types === 'all';
     }
     loadDisplay();
     setInterval(loadDisplay, 5000);

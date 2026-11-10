@@ -8,3 +8,7 @@ SESSION_NAME = "session"
 
 STATE_FILE = "state.json"
 LOG_FILE = "forwarder.log"
+
+# Comma-separated list of media types to forward: photo, video, audio, text, document
+# Leave as "all" (or unset) to forward every supported media type.
+ALLOW_MEDIA_TYPES = "all"

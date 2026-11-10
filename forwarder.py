@@ -58,6 +58,59 @@ logger = logging.getLogger(__name__)
 
 
 # ============================================================
+# MEDIA TYPE FILTER
+# ============================================================
+
+# File extensions used to classify documents sent as files.
+VIDEO_EXTENSIONS = {
+    ".mp4", ".mkv", ".avi", ".mov", ".webm", ".flv", ".wmv",
+    ".m4v", ".mpeg", ".mpg", ".ts", ".m2ts", ".3gp", ".ogv",
+}
+
+AUDIO_EXTENSIONS = {
+    ".mp3", ".wav", ".ogg", ".m4a", ".aac", ".flac", ".wma",
+    ".opus", ".amr",
+}
+
+TEXT_EXTENSIONS = {
+    ".txt", ".md", ".csv", ".json", ".log", ".py", ".html",
+    ".css", ".js", ".xml", ".rtf", ".doc", ".docx", ".pdf",
+}
+
+
+def allowed_media_types():
+    """Return the set of media types allowed to forward, or None for all."""
+    raw = getenv("ALLOW_MEDIA_TYPES", default="all").strip()
+    if not raw or raw.lower() == "all":
+        return None
+    return {t.strip().lower() for t in raw.split(",") if t.strip()}
+
+
+def classify_media(message):
+    """Classify a message's media: photo, video, audio, text, document or None."""
+    if message.photo:
+        return "photo"
+    if message.video:
+        return "video"
+    if message.audio:
+        return "audio"
+    if message.voice:
+        return "audio"
+    if message.document:
+        filename = message.file.name if message.file else None
+        if filename:
+            ext = Path(filename).suffix.lower()
+            if ext in VIDEO_EXTENSIONS:
+                return "video"
+            if ext in AUDIO_EXTENSIONS:
+                return "audio"
+            if ext in TEXT_EXTENSIONS:
+                return "text"
+        return "document"
+    return None
+
+
+# ============================================================
 # TELEGRAM SESSION
 # ============================================================
 
@@ -217,51 +270,11 @@ async def copy_old_messages():
             # DETERMINE WHETHER THIS IS MEDIA WE WANT
             # ------------------------------------------------
 
-            media_type = None
-            filename = None
+            media_type = classify_media(message)
+            filename = message.file.name if message.file else None
 
-            # Photos
-            if message.photo:
-                media_type = "PHOTO"
-
-            # Native Telegram videos
-            elif message.video:
-                media_type = "VIDEO"
-
-            # Video/movie files sent as documents
-            elif message.document and not message.voice and not message.audio:
-
-                if message.file:
-                    filename = message.file.name
-
-                if filename:
-                    ext = Path(filename).suffix.lower()
-
-                    video_extensions = {
-                        ".mp4",
-                        ".mkv",
-                        ".avi",
-                        ".mov",
-                        ".webm",
-                        ".flv",
-                        ".wmv",
-                        ".m4v",
-                        ".mpeg",
-                        ".mpg",
-                        ".ts",
-                        ".m2ts",
-                        ".3gp",
-                        ".ogv",
-                    }
-
-                    if ext in video_extensions:
-                        media_type = "FILE"
-
-            # ------------------------------------------------
-            # SKIP EVERYTHING ELSE
-            # ------------------------------------------------
-
-            if not media_type:
+            allowed = allowed_media_types()
+            if not media_type or (allowed is not None and media_type not in allowed):
 
                 skipped += 1
                 save_last_id(message.id)
@@ -464,51 +477,11 @@ async def handler(event):
         # DETERMINE MEDIA TYPE
         # ------------------------------------------------
 
-        media_type = None
-        filename = None
+        media_type = classify_media(message)
+        filename = message.file.name if message.file else None
 
-        # Photos / images
-        if message.photo:
-            media_type = "PHOTO"
-
-        # Native Telegram videos
-        elif message.video:
-            media_type = "VIDEO"
-
-        # Video/movie files
-        elif message.document and not message.voice and not message.audio:
-
-            if message.file:
-                filename = message.file.name
-
-            if filename:
-                ext = Path(filename).suffix.lower()
-
-                video_extensions = {
-                    ".mp4",
-                    ".mkv",
-                    ".avi",
-                    ".mov",
-                    ".webm",
-                    ".flv",
-                    ".wmv",
-                    ".m4v",
-                    ".mpeg",
-                    ".mpg",
-                    ".ts",
-                    ".m2ts",
-                    ".3gp",
-                    ".ogv",
-                }
-
-                if ext in video_extensions:
-                    media_type = "FILE"
-
-        # ------------------------------------------------
-        # SKIP NON-MEDIA / UNWANTED MEDIA
-        # ------------------------------------------------
-
-        if not media_type:
+        allowed = allowed_media_types()
+        if not media_type or (allowed is not None and media_type not in allowed):
 
             logger.info(
                 f"Skipped new message {message.id} "
