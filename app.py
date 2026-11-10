@@ -67,6 +67,21 @@ def _write_env(values: dict):
 # ------------------------------------------------------------------
 app = Flask(__name__)
 _client = None
+_loop = None
+
+
+def _get_loop():
+    """Return a single persistent asyncio event loop (Telethon caches the first loop)."""
+    global _loop
+    if _loop is None:
+        _loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(_loop)
+    return _loop
+
+
+def _run(coro):
+    """Run a coroutine on the persistent event loop."""
+    return _get_loop().run_until_complete(coro)
 
 
 def _get_client():
@@ -134,7 +149,7 @@ def login():
         async def send_code():
             await client.connect()
             await client.send_code_request(phone)
-        asyncio.run(send_code())
+        _run(send_code())
         return redirect(url_for("otp", phone=phone))
     return render_template("login.html")
 
@@ -150,7 +165,7 @@ def otp():
         client = _get_client()
         async def sign_in():
             await client.sign_in(code=int(code))
-        asyncio.run(sign_in())
+        _run(sign_in())
         # persist session string for future runs
         session_str = client.session.save()
         env = _read_env()
@@ -188,7 +203,7 @@ def channels():
         return chans
 
     try:
-        channels_list = asyncio.run(fetch_dialogs())
+        channels_list = _run(fetch_dialogs())
     except Exception as exc:
         return render_template(
             "channels.html",
@@ -220,7 +235,7 @@ def channels():
                     entity = await client.get_input_entity(link)
                 return entity.id, entity.title
             try:
-                eid, title = asyncio.run(resolve())
+                eid, title = _run(resolve())
             except Exception as exc:
                 return jsonify(error=str(exc)), 400
             os.environ["SOURCE_CHANNEL"] = str(eid)
