@@ -186,7 +186,17 @@ def channels():
                 chans.append((d.id, d.title, d.is_channel, d.is_group))
         return chans
 
-    channels_list = asyncio.run(fetch_dialogs())
+    try:
+        channels_list = asyncio.run(fetch_dialogs())
+    except Exception as exc:
+        return render_template(
+            "channels.html",
+            channels=[],
+            source_id=source_id,
+            target_id=target_id,
+            media_types=env.get("ALLOW_MEDIA_TYPES", "all") if (env := _read_env()) else "all",
+            error=f"Telegram not logged in yet: {exc}. Go to /login first.",
+        )
 
     if request.method == "POST":
         action = request.form.get("action")

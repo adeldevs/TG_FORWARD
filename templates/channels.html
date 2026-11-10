@@ -17,6 +17,12 @@
 <body class="container">
   <h1>Select channels / groups</h1>
 
+  {% if error %}
+    <div class="panel" style="border-color:#dc2626;background:#fef2f2">
+      <h3 style="color:#dc2626">⚠ {{ error }}</h3>
+    </div>
+  {% endif %}
+
   <div class="panel">
     <h3>From (source)</h3>
     <form id="fromForm" method="post" action="/set-source">
