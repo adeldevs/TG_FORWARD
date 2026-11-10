@@ -2,98 +2,175 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>Telegram Forwarder – Guide</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Telegram Forwarder – Full Guide</title>
+  <link rel="icon" href="/favicon.ico">
   <style>
-    body{font-family:system-ui,Arial,sans-serif;margin:2rem;background:#f5f5f5}
-    .max{max-width:800px;margin:auto}
-    h1,h2{margin-top:2rem}
-    code{background:#e2e8f0;padding:2px 4px;border-radius:4px}
-    pre{background:#e2e8f0;padding:1rem;border-radius:6px;overflow:auto}
-    .step{margin-bottom:1.5rem}
+    :root {
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --text: #0f172a;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+      --radius: 10px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+    .navbar {
+      background: var(--card-bg);
+      border-bottom: 1px solid var(--border);
+      padding: 0.8rem 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .navbar .brand {
+      font-weight: 700;
+      font-size: 1.15rem;
+      color: var(--primary);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .nav-links {
+      display: flex;
+      gap: 1.25rem;
+      align-items: center;
+    }
+    .nav-links a {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.95rem;
+      font-weight: 500;
+    }
+    .nav-links a:hover, .nav-links a.active {
+      color: var(--primary);
+    }
+    .container {
+      max-width: 840px;
+      margin: 2rem auto 4rem;
+      padding: 0 1rem;
+    }
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 2.5rem;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.04);
+    }
+    h1 {
+      margin-top: 0;
+      font-size: 1.75rem;
+      color: var(--text);
+    }
+    h2 {
+      margin-top: 2rem;
+      font-size: 1.25rem;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 0.4rem;
+      color: var(--primary);
+    }
+    code {
+      background: #e2e8f0;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.9em;
+      font-family: monospace;
+    }
+    pre {
+      background: #0f172a;
+      color: #f8fafc;
+      padding: 1rem;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 0.9em;
+    }
+    ol, ul {
+      padding-left: 1.4rem;
+    }
+    li {
+      margin-bottom: 0.5rem;
+    }
+    a {
+      color: var(--primary);
+      text-decoration: none;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
   </style>
 </head>
 <body>
-<div class="max">
-  <h1>Telegram Message Forwarder – Full Guide</h1>
+  <nav class="navbar">
+    <a href="/" class="brand">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+      Telegram Forwarder
+    </a>
+    <div class="nav-links">
+      <a href="/channels">Channels</a>
+      <a href="/config">Config</a>
+      <a href="/guide" class="active">Guide</a>
+    </div>
+  </nav>
 
-  <section class="step">
-    <h2>1. What does this project do?</h2>
-    <p>This is a tiny Telegram bot that automatically forwards every new message (and optionally old messages) from one Telegram channel/group to another. It remembers the last processed message ID so you can resume after a restart.</p>
-  </section>
+  <div class="container">
+    <div class="card">
+      <h1>Telegram Message Forwarder – Quick Start & User Guide</h1>
 
-  <section class="step">
-    <h2>2. Required Telegram credentials</h2>
-    <p>To talk to Telegram you need an <strong>API ID</strong> and <strong>API Hash</strong>. Obtain them at <a href="https://my.telegram.org" target="_blank">my.telegram.org</a> → “API Development tools” → “Create new application”. <br>
-    <code>API_ID</code> is a numeric integer.<br>
-    <code>API_HASH</code> is a 32‑character hex string.</p>
-    <p>If you already have a <em>session string</em> (the value Telethon saves after a login) you can skip entering the API ID/Hash – just paste the session string on the <strong>Config</strong> page.</p>
-  </section>
+      <h2>1. Overview</h2>
+      <p>
+        This web application allows you to automatically forward messages from one or more Telegram channels/groups to one or more destination channels/groups in real time.
+      </p>
 
-  <section class="step">
-    <h2>3. Deploy the code</h2>
-    <ol>
-      <li>Clone or download this repo to your server/PC.</li>
-      <li>Create a virtual environment (recommended):<br>
-        <code>python -m venv venv</code><br>
-        <code>source venv/bin/activate</code> (Linux/macOS) or <code>venv\\Scripts\\Activate</code> (Windows).</li>
-      <li>Install dependencies:<br>
-        <code>pip install -r requirements.txt</code></li>
-      <li>Run the Flask web UI:<br>
-        <code>python app.py</code><br>
-        The console will show something like <code>Running on http://0.0.0.0:5000</code>.</li>
-      <li>Open that URL in a browser (or use the URL provided by your hosting platform, e.g. Railway, Render, Fly).</li>
-    </ol>
-  </section>
+      <h2>2. Step 1: Telegram API Credentials</h2>
+      <p>
+        Visit the <a href="/config"><strong>Config</strong></a> page. You only need your Telegram API credentials:
+      </p>
+      <ul>
+        <li><code>API_ID</code>: Obtained from <a href="https://my.telegram.org" target="_blank">my.telegram.org</a>.</li>
+        <li><code>API_HASH</code>: 32-character hexadecimal string from my.telegram.org.</li>
+        <li><em>Note: You no longer need to type any channel IDs in the config!</em></li>
+      </ul>
 
-  <section class="step">
-    <h2>4. Configure the bot (first run)</h2>
-    <ol>
-      <li><strong>Config page</strong> (<code>/config</code>): enter your <code>API_ID</code>, <code>API_HASH</code> and optionally a <code>SESSION_NAME</code>. If you already have a session string you can paste it in the <code>SESSION_STRING</code> field (skip the OTP steps).</li>
-      <li>Click <strong>Save & continue</strong> – the values are written to <code>.env</code>.</li>
-    </ol>
-  </section>
+      <h2>3. Step 2: Log In with Phone & OTP</h2>
+      <ol>
+        <li>Go to <a href="/login"><strong>Login</strong></a> and enter your Telegram phone number with international country code (e.g. <code>+918129211707</code>).</li>
+        <li>Check Telegram on your devices for the 5-digit verification code.</li>
+        <li>Enter the code on the OTP page. If your Telegram account has Two-Step Verification (2FA cloud password) enabled, enter your password as well.</li>
+      </ol>
 
-  <section class="step">
-    <h2>5. Log in with phone + OTP</h2>
-    <ol>
-      <li>Go to <strong>/login</code> and type your Telegram phone number with country code (e.g. <code>+14155552671</code>).</li>
-      <li>Press <strong>Send OTP</strong> – you will receive a 5‑digit code via SMS (or Telegram).</li>
-      <li>Go to <strong>/otp</code> and enter the code, then press <strong>Verify</strong>.</li>
-      <li>After verification the app stores a <code>SESSION_STRING</code> in <code>.env</code> so you won’t need to type the code again.</li>
-    </ol>
-  </section>
+      <h2>4. Step 3: Select Source & Destination Channels</h2>
+      <p>
+        Once logged in, open <a href="/channels"><strong>Channels</strong></a>:
+      </p>
+      <ul>
+        <li><strong>Interactive Table</strong>: All channels and groups where your account is a member are listed with their full channel names.</li>
+        <li><strong>Multiple Selection</strong>: Use the checkboxes in the table to pick one or more <strong>Source</strong> channels and one or more <strong>Destination</strong> channels.</li>
+        <li><strong>Public Channels</strong>: If a source or destination is a public channel, use the "Add Custom or Public Channel" box with its <code>@username</code> or <code>t.me/...</code> link. It will automatically resolve the channel name and add it!</li>
+        <li><strong>Save Selection</strong>: Click <strong>"Save Channel Selection"</strong> to apply.</li>
+      </ul>
 
-  <section class="step">
-    <h2>6. Pick source & target channels</h2>
-    <ol>
-      <li>Open <strong>/channels</code>. You will see two small tables labelled <strong>From</strong> and <strong>To</strong> showing the current channel IDs (taken from <code>.env</code>).</li>
-      <li>Below them is a list of every channel/group you belong to. Click the <strong>Change</strong> button next to <strong>From</strong> or <strong>To</strong>, select the desired channel from the list, and the ID is saved.</li>
-      <li>If you need a channel that is not in the list, use the <strong>Add custom channel / group</strong> field: paste a Telegram link (<code>t.me/...</code>) or username (<code>@mychannel</code>) and click <strong>Add</code>. The app resolves the entity and writes its ID (by default it overwrites the <strong>From</strong> channel – you can edit the code to target the <strong>To</strong> channel instead).</li>
-      <li>After you’ve set both IDs, close the browser.</li>
-    </ol>
-  </section>
+      <h2>5. Step 4: Media Filter & Forwarder Controls</h2>
+      <ul>
+        <li><strong>Media Filter</strong>: Choose whether to forward all messages or filter by photos, videos, audio, text, or documents.</li>
+        <li><strong>Live Forwarder</strong>: The forwarder runs automatically in the background. You can pause or resume it anytime from the Channels dashboard.</li>
+      </ul>
 
-  <section class="step">
-    <h2>7. Run the forwarder</h2>
-    <p>Now <code>.env</code> contains the needed values. Simply run the original forwarder:</p>
-    <pre><code>python forwarder.py</code></pre>
-    <p>The script will start forwarding every new message from the selected source to the target, and it will resume from the last saved message ID if you restart it.</p>
-  </section>
-
-  <section class="step">
-    <h2>8. (Optional) Deploy on a PaaS (Railway, Render, Fly, etc.)</h2>
-    <ol>
-      <li>Push this repository to a Git host (GitHub, GitLab, Bitbucket).</li>
-      <li>Create a new project on the PaaS and point it at the repo.</li>
-      <li>The platform will run <code>python app.py</code> (or you set the start command).</li>
-      <li>Make sure the <code>.env</code> file is present in the project root; the web UI will write to it on first run, or you can pre‑populate it with your API credentials.</li>
-      <li>Once the deployment is up, open the generated URL and follow the same Config → Login → Channels flow.</li>
-    </ol>
-  </section>
-
-  <footer style="margin-top:3rem;padding-top:2rem;border-top:1px solid #ddd;font-size:0.9rem;color:#555;">
-    <p>Built with <code>Telethon</code> + <code>Flask</code>. Feel free to fork and adapt.</p>
-  </footer>
-</div>
+      <h2>6. Logging Out & Resetting Data</h2>
+      <p>
+        Click the <strong>Log Out</strong> button in the top navigation bar at any time. This will disconnect your Telegram session, terminate the login, and wipe all saved channels, state, and session files for complete privacy.
+      </p>
+    </div>
+  </div>
 </body>
 </html>

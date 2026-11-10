@@ -1,3 +1,4 @@
 telethon
 python-decouple
-aiohttp
+python-dotenv
+flask

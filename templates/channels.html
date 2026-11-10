@@ -2,98 +2,736 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>Telegram Forwarder – Channels</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Telegram Forwarder – Channels Dashboard</title>
+  <link rel="icon" href="/favicon.ico">
   <style>
-    body{font-family:system-ui,Arial,sans-serif;margin:2rem;background:#f5f5f5}
-    .container{max-width:900px;margin:auto}
-    h1{margin-bottom:1rem}
-    .panel{border:1px solid #ccc;border-radius:6px;padding:1rem;margin:1rem 0;background:#fafafa}
-    .panel h3{margin-top:0}
-    .channel{display:flex;align-items:center;margin .5rem 0}
-    .channel input{margin-right .5rem flex:0 0 150px}
-    .action{margin-left 1rem}
+    :root {
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --text: #0f172a;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+      --success: #16a34a;
+      --danger: #dc2626;
+      --warning: #d97706;
+      --radius: 10px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+    .navbar {
+      background: var(--card-bg);
+      border-bottom: 1px solid var(--border);
+      padding: 0.8rem 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .navbar .brand {
+      font-weight: 700;
+      font-size: 1.15rem;
+      color: var(--primary);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .nav-links {
+      display: flex;
+      gap: 1.25rem;
+      align-items: center;
+    }
+    .nav-links a {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.95rem;
+      font-weight: 500;
+    }
+    .nav-links a:hover, .nav-links a.active {
+      color: var(--primary);
+    }
+    .btn-logout {
+      background: #fee2e2;
+      color: var(--danger);
+      border: 1px solid #fecaca;
+      padding: 0.4rem 0.85rem;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 0.85rem;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      transition: all 0.2s;
+    }
+    .btn-logout:hover {
+      background: #fca5a5;
+      color: #991b1b;
+    }
+    .container {
+      max-width: 1080px;
+      margin: 1.5rem auto 3rem;
+      padding: 0 1rem;
+    }
+    .alert {
+      padding: 0.85rem 1.25rem;
+      border-radius: var(--radius);
+      margin-bottom: 1.25rem;
+      font-size: 0.95rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .alert-danger {
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      color: #b91c1c;
+    }
+    .alert-success {
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      color: #166534;
+    }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.25rem;
+      margin-bottom: 1.25rem;
+    }
+    @media (max-width: 768px) {
+      .grid-2 { grid-template-columns: 1fr; }
+    }
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.03);
+      margin-bottom: 1.25rem;
+    }
+    .card h3 {
+      margin-top: 0;
+      margin-bottom: 0.75rem;
+      font-size: 1.1rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.25rem 0.65rem;
+      border-radius: 9999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+    .badge-running { background: #dcfce7; color: #15803d; }
+    .badge-paused { background: #fef3c7; color: #b45309; }
+    .badge-channel { background: #dbeafe; color: #1e40af; }
+    .badge-group { background: #f3e8ff; color: #6b21a8; }
+    .badge-public { background: #e0e7ff; color: #3730a3; }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.5rem 1rem;
+      font-size: 0.9rem;
+      font-weight: 600;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      text-decoration: none;
+      transition: background 0.15s;
+    }
+    .btn-sm {
+      padding: 0.35rem 0.7rem;
+      font-size: 0.8rem;
+    }
+    .btn-primary {
+      background: var(--primary);
+      color: #fff;
+    }
+    .btn-primary:hover {
+      background: var(--primary-hover);
+    }
+    .btn-success {
+      background: var(--success);
+      color: #fff;
+    }
+    .btn-success:hover {
+      background: #15803d;
+    }
+    .btn-outline {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+    .btn-outline:hover {
+      background: #f1f5f9;
+    }
+    .btn-danger-outline {
+      background: transparent;
+      border: 1px solid #fca5a5;
+      color: var(--danger);
+    }
+    .btn-danger-outline:hover {
+      background: #fef2f2;
+    }
+    .active-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      min-height: 40px;
+      align-items: center;
+    }
+    .channel-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.35rem 0.65rem;
+      background: #f1f5f9;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 500;
+    }
+    .channel-pill.source-pill {
+      background: #eff6ff;
+      border-color: #bfdbfe;
+      color: #1e40af;
+    }
+    .channel-pill.target-pill {
+      background: #f0fdf4;
+      border-color: #bbf7d0;
+      color: #166534;
+    }
+    .channel-pill .remove-btn {
+      color: #94a3b8;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      font-weight: bold;
+      padding: 0;
+      font-size: 1rem;
+      line-height: 1;
+    }
+    .channel-pill .remove-btn:hover {
+      color: var(--danger);
+    }
+    .empty-state {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      font-style: italic;
+    }
+    /* Table styling */
+    .table-container {
+      overflow-x: auto;
+      max-height: 520px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+    }
+    table.channel-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 0.9rem;
+    }
+    table.channel-table th {
+      background: #f8fafc;
+      padding: 0.75rem 1rem;
+      font-weight: 600;
+      border-bottom: 2px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    table.channel-table td {
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+    }
+    table.channel-table tr:hover td {
+      background: #f8fafc;
+    }
+    .col-check {
+      width: 90px;
+      text-align: center;
+    }
+    .col-type {
+      width: 110px;
+    }
+    .col-id {
+      width: 150px;
+      font-family: monospace;
+      color: var(--text-muted);
+      font-size: 0.8rem;
+    }
+    .channel-title-cell {
+      display: flex;
+      flex-direction: column;
+      gap: 0.15rem;
+    }
+    .channel-name {
+      font-weight: 600;
+      color: var(--text);
+    }
+    .channel-username {
+      font-size: 0.8rem;
+      color: var(--primary);
+      text-decoration: none;
+    }
+    .channel-username:hover {
+      text-decoration: underline;
+    }
+    .search-box {
+      width: 100%;
+      padding: 0.65rem 1rem;
+      font-size: 0.95rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      margin-bottom: 1rem;
+      background: #fff;
+    }
+    .search-box:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+    }
+    .table-toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.75rem;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+    .media-type-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1.25rem;
+      margin: 1rem 0;
+    }
+    .media-type-list label {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.9rem;
+      cursor: pointer;
+    }
+    .stats-row {
+      display: flex;
+      gap: 2rem;
+      margin-top: 0.5rem;
+      font-size: 0.9rem;
+      flex-wrap: wrap;
+    }
+    .stat-item {
+      display: flex;
+      flex-direction: column;
+    }
+    .stat-val {
+      font-weight: 700;
+      font-size: 1.2rem;
+    }
+    .stat-label {
+      color: var(--text-muted);
+      font-size: 0.8rem;
+    }
+    .custom-add-form {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+    .custom-add-form input {
+      flex: 1;
+      min-width: 250px;
+      padding: 0.55rem 0.85rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 0.9rem;
+    }
+    .custom-add-form select {
+      padding: 0.55rem 0.85rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: #fff;
+      font-size: 0.9rem;
+    }
   </style>
 </head>
-<body class="container">
-  <h1>Select channels / groups</h1>
-
-  {% if error %}
-    <div class="panel" style="border-color:#dc2626;background:#fef2f2">
-      <h3 style="color:#dc2626">⚠ {{ error }}</h3>
+<body>
+  <nav class="navbar">
+    <a href="/" class="brand">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+      Telegram Forwarder
+    </a>
+    <div class="nav-links">
+      <a href="/channels" class="active">Channels</a>
+      <a href="/config">Config</a>
+      <a href="/guide">Guide</a>
+      <a href="/logout" class="btn-logout" onclick="return confirm('⚠️ Are you sure you want to log out?\n\nThis will disconnect your Telegram session and clear all saved channels and state data.');">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        Log Out
+      </a>
     </div>
-  {% endif %}
+  </nav>
 
-  <div class="panel">
-    <h3>From (source)</h3>
-    <form id="fromForm" method="post" action="/set-source">
-      <input type="hidden" name="channel_id" id="fromChannelId" value="{{ source_id }}">
-      <div id="fromDisplay">Loading…</div>
-      <button type="submit">Change</button>
-    </form>
-  </div>
+  <div class="container">
+    {% if error %}
+      <div class="alert alert-danger">
+        <div><strong>⚠ Notice:</strong> {{ error }}</div>
+      </div>
+    {% endif %}
 
-  <div class="panel">
-    <h3>To (target)</h3>
-    <form id="toForm" method="post" action="/set-target">
-      <input type="hidden" name="channel_id" id="toChannelId" value="{{ target_id }}">
-      <div id="toDisplay">Loading…</div>
-      <button type="submit">Change</button>
-    </form>
-  </div>
+    {% if message %}
+      <div class="alert alert-success">
+        <div><strong>✓ Success:</strong> {{ message }}</div>
+      </div>
+    {% endif %}
 
-  <div class="panel">
-    <h3>All available channels & groups</h3>
-    <ul>
-    {% for cid, title, is_ch, is_gr in channels %}
-      <li>
-        <label>
-          <input type="checkbox" name="channel" value="{{ cid }}" {% if cid == source_id %}disabled{% endif %} {% if cid == target_id %}disabled{% endif %}> 
-          {{ title }} ({{ cid }}) {% if is_ch %}[channel]{% elif is_gr %}[group]{% endif %}
-        </label>
-      </li>
-    {% endfor %}
-    </ul>
-  </div>
+    <!-- FORWARDER STATUS CARD -->
+    <div class="card">
+      <h3>
+        <span>Forwarder Engine</span>
+        <span id="forwarderBadge" class="status-badge {% if forwarder_running %}badge-running{% else %}badge-paused{% endif %}">
+          <span style="font-size:1.1em;">●</span>
+          <span id="forwarderStatusText">{% if forwarder_running %}Running & Listening{% else %}Paused / Inactive{% endif %}</span>
+        </span>
+      </h3>
+      <p style="margin:0 0 0.75rem; color:var(--text-muted); font-size:0.9rem;">
+        Automatically captures new messages arriving in your selected <strong>Source</strong> channels and sends them to your selected <strong>Destination</strong> channels.
+      </p>
+      <div class="stats-row">
+        <div class="stat-item">
+          <span class="stat-val" id="statForwarded" style="color:var(--success);">{{ forwarder_stats.forwarded or 0 }}</span>
+          <span class="stat-label">Messages Forwarded</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-val" id="statSkipped" style="color:var(--text-muted);">{{ forwarder_stats.skipped or 0 }}</span>
+          <span class="stat-label">Skipped (Filtered)</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-val" id="statSources">{{ source_channels|length }}</span>
+          <span class="stat-label">Active Sources</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-val" id="statTargets">{{ target_channels|length }}</span>
+          <span class="stat-label">Active Destinations</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-val" id="statLastEvent" style="font-size:0.95rem; font-family:monospace; margin-top:0.25rem;">
+            {{ forwarder_stats.last_event or 'Waiting for messages...' }}
+          </span>
+          <span class="stat-label">Last Activity</span>
+        </div>
+      </div>
+      <div style="margin-top:1rem; display:flex; gap:0.5rem;">
+        <form method="post" action="/forwarder/start" style="display:inline;">
+          <button type="submit" class="btn btn-success btn-sm">▶ Start Forwarder</button>
+        </form>
+        <form method="post" action="/forwarder/stop" style="display:inline;">
+          <button type="submit" class="btn btn-outline btn-sm">⏸ Pause Forwarder</button>
+        </form>
+      </div>
+    </div>
 
-  <div class="panel">
-    <h3>File types to forward</h3>
-    <p>Select which kinds of files to forward. Leave all unchecked (or check "all") to forward everything.</p>
-    <form id="mediaForm" method="post" action="/set-media-types">
-      <label style="margin-right:1rem;"><input type="checkbox" name="media_types" value="all" {% if media_types == "all" or media_types is none %}checked{% endif %}> All</label>
-      <label style="margin-right:1rem;"><input type="checkbox" name="media_types" value="photo" {% if "photo" in media_types %}checked{% endif %}> Photos / images</label>
-      <label style="margin-right:1rem;"><input type="checkbox" name="media_types" value="video" {% if "video" in media_types %}checked{% endif %}> Videos</label>
-      <label style="margin-right:1rem;"><input type="checkbox" name="media_types" value="audio" {% if "audio" in media_types %}checked{% endif %}> Audio</label>
-      <label style="margin-right:1rem;"><input type="checkbox" name="media_types" value="text" {% if "text" in media_types %}checked{% endif %}> Text / documents</label>
-      <label style="margin-right:1rem;"><input type="checkbox" name="media_types" value="document" {% if "document" in media_types %}checked{% endif %}> Other documents</label>
-      <button type="submit">Save</button>
-    </form>
-  </div>
+    <!-- ACTIVE FORWARDING RULES SUMMARY (SOURCES & DESTINATIONS) -->
+    <div class="grid-2">
+      <!-- FROM (SOURCES) -->
+      <div class="card">
+        <h3>
+          <span>From (Sources)</span>
+          <span style="font-size:0.85rem; color:var(--text-muted);">{{ source_channels|length }} selected</span>
+        </h3>
+        <p style="font-size:0.85rem; color:var(--text-muted); margin-top:0;">
+          Messages sent to these channels will be forwarded:
+        </p>
+        <div class="active-pills" id="sourcesPills">
+          {% if source_channels %}
+            {% for ch in source_channels %}
+              <div class="channel-pill source-pill">
+                <strong>{{ ch.title }}</strong>
+                {% if ch.username %}<span style="font-size:0.8em;opacity:0.8;">@{{ ch.username }}</span>{% endif %}
+                <form method="post" action="/remove-channel" style="display:inline;margin:0;">
+                  <input type="hidden" name="channel_id" value="{{ ch.id }}">
+                  <input type="hidden" name="role" value="source">
+                  <button type="submit" class="remove-btn" title="Remove as source">×</button>
+                </form>
+              </div>
+            {% endfor %}
+          {% else %}
+            <div class="empty-state">No source channels selected. Check channels in the table below.</div>
+          {% endif %}
+        </div>
+      </div>
 
-  <div class="panel">
-    <h3>Add custom channel / group</h3>
-    <p>Paste a Telegram link or username (e.g. <code>@mychannel</code> or <code>t.me/joinchat/AbCdEfGh</code>):</p>
-    <form id="addForm" method="post" action="/add-channel">
-      <input name="link" placeholder="t.me/... or @username" required style="width:60%;padding:.4rem;">
-      <button type="submit" style="padding:.4rem 1rem;">Add</button>
-    </form>
+      <!-- TO (DESTINATIONS) -->
+      <div class="card">
+        <h3>
+          <span>To (Destinations)</span>
+          <span style="font-size:0.85rem; color:var(--text-muted);">{{ target_channels|length }} selected</span>
+        </h3>
+        <p style="font-size:0.85rem; color:var(--text-muted); margin-top:0;">
+          Forwarded messages will be delivered to these channels:
+        </p>
+        <div class="active-pills" id="targetsPills">
+          {% if target_channels %}
+            {% for ch in target_channels %}
+              <div class="channel-pill target-pill">
+                <strong>{{ ch.title }}</strong>
+                {% if ch.username %}<span style="font-size:0.8em;opacity:0.8;">@{{ ch.username }}</span>{% endif %}
+                <form method="post" action="/remove-channel" style="display:inline;margin:0;">
+                  <input type="hidden" name="channel_id" value="{{ ch.id }}">
+                  <input type="hidden" name="role" value="target">
+                  <button type="submit" class="remove-btn" title="Remove as destination">×</button>
+                </form>
+              </div>
+            {% endfor %}
+          {% else %}
+            <div class="empty-state">No destination channels selected. Check channels in the table below.</div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- ADD CUSTOM / PUBLIC CHANNEL -->
+    <div class="card">
+      <h3>Add Custom or Public Channel / Group</h3>
+      <p style="color:var(--text-muted); font-size:0.85rem; margin-top:0;">
+        You can forward from or to any public channel or group! Enter a Telegram link (e.g. <code>t.me/news</code>) or username (e.g. <code>@durov</code>) or invite link:
+      </p>
+      <form class="custom-add-form" method="post" action="/add-channel">
+        <input name="link" placeholder="e.g. @channelname or https://t.me/channelname" required>
+        <select name="role">
+          <option value="source">Add as Source</option>
+          <option value="target">Add as Destination</option>
+          <option value="both">Add as Both</option>
+          <option value="none">Add to list only</option>
+        </select>
+        <button type="submit" class="btn btn-primary">Add Channel</button>
+      </form>
+    </div>
+
+    <!-- MAIN CHANNELS SELECTION TABLE -->
+    <div class="card">
+      <h3>
+        <span>Available Channels & Groups</span>
+        <span style="font-size:0.85rem; font-weight:normal; color:var(--text-muted);">
+          Total: <strong id="channelCount">{{ channels|length }}</strong>
+        </span>
+      </h3>
+      <p style="color:var(--text-muted); font-size:0.85rem; margin-top:0;">
+        Select which channels should act as <strong>Source</strong> and which should act as <strong>Destination</strong>. You can select multiple channels for each!
+      </p>
+
+      <form id="channelsForm" method="post" action="/set-channels">
+        <div class="table-toolbar">
+          <input type="text" id="channelSearch" class="search-box" placeholder="🔍 Search channels by name or username..." oninput="filterChannels()" style="max-width:350px;margin-bottom:0;">
+          <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+            <button type="button" class="btn btn-outline btn-sm" onclick="selectAll('source')">All Sources</button>
+            <button type="button" class="btn btn-outline btn-sm" onclick="clearAll('source')">Clear Sources</button>
+            <button type="button" class="btn btn-outline btn-sm" onclick="selectAll('target')">All Destinations</button>
+            <button type="button" class="btn btn-outline btn-sm" onclick="clearAll('target')">Clear Destinations</button>
+            <button type="submit" class="btn btn-primary btn-sm" style="font-weight:700;">💾 Save Channel Selection</button>
+          </div>
+        </div>
+
+        <div class="table-container">
+          <table class="channel-table">
+            <thead>
+              <tr>
+                <th class="col-check">
+                  <label style="cursor:pointer;" title="Toggle all visible sources">
+                    <input type="checkbox" id="headerCheckSource" onchange="toggleVisible('source', this.checked)"> Source
+                  </label>
+                </th>
+                <th class="col-check">
+                  <label style="cursor:pointer;" title="Toggle all visible destinations">
+                    <input type="checkbox" id="headerCheckTarget" onchange="toggleVisible('target', this.checked)"> Destination
+                  </label>
+                </th>
+                <th>Channel Name</th>
+                <th class="col-type">Type</th>
+                <th class="col-id">Channel ID</th>
+              </tr>
+            </thead>
+            <tbody id="channelsTableBody">
+              {% for ch in channels %}
+                <tr class="channel-row" data-name="{{ ch.title|lower }}" data-username="{{ (ch.username or '')|lower }}">
+                  <td class="col-check">
+                    <input type="checkbox" class="source-checkbox" name="source_ids" value="{{ ch.id }}" {% if ch.id in selected_source_ids %}checked{% endif %}>
+                  </td>
+                  <td class="col-check">
+                    <input type="checkbox" class="target-checkbox" name="target_ids" value="{{ ch.id }}" {% if ch.id in selected_target_ids %}checked{% endif %}>
+                  </td>
+                  <td>
+                    <div class="channel-title-cell">
+                      <span class="channel-name">{{ ch.title }}</span>
+                      {% if ch.username %}
+                        <a href="https://t.me/{{ ch.username }}" target="_blank" class="channel-username">@{{ ch.username }}</a>
+                      {% endif %}
+                    </div>
+                  </td>
+                  <td class="col-type">
+                    {% if ch.is_channel %}
+                      <span class="status-badge badge-channel">Channel</span>
+                    {% elif ch.is_group %}
+                      <span class="status-badge badge-group">Group</span>
+                    {% else %}
+                      <span class="status-badge badge-public">Chat</span>
+                    {% endif %}
+                  </td>
+                  <td class="col-id">{{ ch.id }}</td>
+                </tr>
+              {% else %}
+                <tr>
+                  <td colspan="5" style="text-align:center; padding:2rem; color:var(--text-muted);">
+                    No channels found. Try clicking "Add Custom or Public Channel" above or logging in fresh.
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <div style="margin-top:1rem; text-align:right;">
+          <button type="submit" class="btn btn-primary" style="padding:0.65rem 1.5rem; font-size:1rem;">
+            💾 Save Channel Selection
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- FILE TYPES / MEDIA FILTER CARD -->
+    <div class="card">
+      <h3>File Types to Forward</h3>
+      <p style="color:var(--text-muted); font-size:0.85rem; margin-top:0;">
+        Filter which kinds of content to forward. Check <strong>"All Media & Text"</strong> to forward everything without restriction.
+      </p>
+      <form id="mediaForm" method="post" action="/set-media-types">
+        <div class="media-type-list">
+          <label><input type="checkbox" name="media_types" value="all" {% if media_types == "all" or media_types is none or not media_types %}checked{% endif %} onchange="handleAllMediaToggle(this)"> <strong>All Media & Text</strong></label>
+          <label><input type="checkbox" name="media_types" value="photo" class="media-checkbox" {% if "photo" in media_types %}checked{% endif %}> Photos / Images</label>
+          <label><input type="checkbox" name="media_types" value="video" class="media-checkbox" {% if "video" in media_types %}checked{% endif %}> Videos</label>
+          <label><input type="checkbox" name="media_types" value="audio" class="media-checkbox" {% if "audio" in media_types %}checked{% endif %}> Audio / Voice</label>
+          <label><input type="checkbox" name="media_types" value="text" class="media-checkbox" {% if "text" in media_types %}checked{% endif %}> Text messages</label>
+          <label><input type="checkbox" name="media_types" value="document" class="media-checkbox" {% if "document" in media_types %}checked{% endif %}> Documents & Files</label>
+        </div>
+        <button type="submit" class="btn btn-primary btn-sm">Save Media Filter</button>
+      </form>
+    </div>
   </div>
 
   <script>
-    // simple fetch to display current channel names without page reload
-    async function loadDisplay() {
-      const r = await fetch('/current');
-      const {from, to, media_types} = await r.json();
-      document.getElementById('fromDisplay').innerText = from || '—';
-      document.getElementById('toDisplay').innerText = to || '—';
-      const all = document.querySelector('input[value="all"]');
-      ['photo','video','audio','text','document'].forEach(v => {
-        document.querySelector('input[value="'+v+'"]').checked =
-          media_types === 'all' || media_types.includes(v);
+    // Search filter for available channels
+    function filterChannels() {
+      const q = document.getElementById('channelSearch').value.toLowerCase().trim();
+      const rows = document.querySelectorAll('.channel-row');
+      let count = 0;
+      rows.forEach(r => {
+        const name = r.getAttribute('data-name') || '';
+        const user = r.getAttribute('data-username') || '';
+        if (name.includes(q) || user.includes(q)) {
+          r.style.display = '';
+          count++;
+        } else {
+          r.style.display = 'none';
+        }
       });
-      all.checked = media_types === 'all';
+      document.getElementById('channelCount').innerText = count;
     }
-    loadDisplay();
-    setInterval(loadDisplay, 5000);
+
+    function selectAll(type) {
+      const selector = type === 'source' ? '.source-checkbox' : '.target-checkbox';
+      document.querySelectorAll(selector).forEach(cb => {
+        if (cb.closest('tr').style.display !== 'none') {
+          cb.checked = true;
+        }
+      });
+    }
+
+    function clearAll(type) {
+      const selector = type === 'source' ? '.source-checkbox' : '.target-checkbox';
+      document.querySelectorAll(selector).forEach(cb => {
+        if (cb.closest('tr').style.display !== 'none') {
+          cb.checked = false;
+        }
+      });
+    }
+
+    function toggleVisible(type, isChecked) {
+      const selector = type === 'source' ? '.source-checkbox' : '.target-checkbox';
+      document.querySelectorAll(selector).forEach(cb => {
+        if (cb.closest('tr').style.display !== 'none') {
+          cb.checked = isChecked;
+        }
+      });
+    }
+
+    function handleAllMediaToggle(el) {
+      if (el.checked) {
+        document.querySelectorAll('.media-checkbox').forEach(cb => { cb.checked = false; });
+      }
+    }
+    document.querySelectorAll('.media-checkbox').forEach(cb => {
+      cb.addEventListener('change', () => {
+        const allBox = document.querySelector('input[name="media_types"][value="all"]');
+        if (cb.checked && allBox) allBox.checked = false;
+      });
+    });
+
+    // Background live stats poller
+    async function refreshCurrentStats() {
+      try {
+        const res = await fetch('/current');
+        if (!res.ok) return;
+        const data = await res.json();
+        
+        if (data.forwarder) {
+          const badge = document.getElementById('forwarderBadge');
+          const txt = document.getElementById('forwarderStatusText');
+          if (data.forwarder.running) {
+            badge.className = 'status-badge badge-running';
+            txt.innerText = 'Running & Listening';
+          } else {
+            badge.className = 'status-badge badge-paused';
+            txt.innerText = 'Paused / Inactive';
+          }
+          if (data.forwarder.forwarded !== undefined) {
+            document.getElementById('statForwarded').innerText = data.forwarder.forwarded;
+          }
+          if (data.forwarder.skipped !== undefined) {
+            document.getElementById('statSkipped').innerText = data.forwarder.skipped;
+          }
+          if (data.forwarder.last_event) {
+            document.getElementById('statLastEvent').innerText = data.forwarder.last_event;
+          }
+        }
+        if (data.sources) {
+          document.getElementById('statSources').innerText = data.sources.length;
+        }
+        if (data.targets) {
+          document.getElementById('statTargets').innerText = data.targets.length;
+        }
+      } catch (err) {
+        // silent fail on network blip
+      }
+    }
+    setInterval(refreshCurrentStats, 5000);
   </script>
 </body>
 </html>

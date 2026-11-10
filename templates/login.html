@@ -2,21 +2,204 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>Telegram Forwarder – Login</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Telegram Forwarder – Log In</title>
+  <link rel="icon" href="/favicon.ico">
   <style>
-    body{font-family:system-ui,Arial,sans-serif;margin:2rem;background:#f5f5f5}
-    .card{max-width:400px;padding:2rem;border:1px solid #ddd;border-radius:8px;background:#fff}
-    input{width:100%;padding:.5rem;margin .5rem 0;}
-    button{padding:.6rem 1rem;}
+    :root {
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --text: #0f172a;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+      --danger: #ef4444;
+      --radius: 10px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+    .navbar {
+      background: var(--card-bg);
+      border-bottom: 1px solid var(--border);
+      padding: 0.8rem 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .navbar .brand {
+      font-weight: 700;
+      font-size: 1.15rem;
+      color: var(--primary);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .nav-links {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+    }
+    .nav-links a {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.95rem;
+      font-weight: 500;
+    }
+    .nav-links a:hover {
+      color: var(--primary);
+    }
+    .container {
+      max-width: 480px;
+      margin: 3rem auto;
+      padding: 0 1rem;
+    }
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 2rem;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    }
+    h2 {
+      margin-top: 0;
+      margin-bottom: 0.5rem;
+      font-size: 1.35rem;
+    }
+    p.subtitle {
+      color: var(--text-muted);
+      margin-top: 0;
+      margin-bottom: 1.5rem;
+      font-size: 0.9rem;
+    }
+    .form-group {
+      margin-bottom: 1.25rem;
+    }
+    label {
+      display: block;
+      margin-bottom: 0.35rem;
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+    input {
+      width: 100%;
+      padding: 0.65rem 0.85rem;
+      font-size: 1rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: #fff;
+    }
+    input:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+    }
+    .hint {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-top: 0.35rem;
+    }
+    button.btn-primary {
+      display: inline-flex;
+      justify-content: center;
+      align-items: center;
+      width: 100%;
+      padding: 0.75rem 1.25rem;
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    button.btn-primary:hover {
+      background: var(--primary-hover);
+    }
+    .alert {
+      padding: 0.85rem 1rem;
+      border-radius: 6px;
+      margin-bottom: 1.25rem;
+      font-size: 0.9rem;
+    }
+    .alert-danger {
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      color: #b91c1c;
+    }
+    .alert-success {
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      color: #166534;
+    }
+    .footer-links {
+      margin-top: 1.25rem;
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.85rem;
+    }
+    .footer-links a {
+      color: var(--primary);
+      text-decoration: none;
+    }
+    .footer-links a:hover {
+      text-decoration: underline;
+    }
   </style>
 </head>
 <body>
-<div class="card">
-  <h2>Login with phone number</h2>
-  <form method="post">
-    <input name="phone" placeholder="+1234567890" required>
-    <button type="submit">Send OTP</button>
-  </form>
-</div>
+  <nav class="navbar">
+    <a href="/" class="brand">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+      Telegram Forwarder
+    </a>
+    <div class="nav-links">
+      <a href="/config">Config</a>
+      <a href="/guide">Guide</a>
+    </div>
+  </nav>
+
+  <div class="container">
+    <div class="card">
+      <h2>Log in with Telegram</h2>
+      <p class="subtitle">Enter your phone number in international format to receive a login verification code.</p>
+
+      {% if logged_out %}
+        <div class="alert alert-success">
+          ✓ Logged out successfully. All session and channel data has been removed.
+        </div>
+      {% endif %}
+
+      {% if error %}
+        <div class="alert alert-danger">
+          ⚠ {{ error }}
+        </div>
+      {% endif %}
+
+      <form method="post" action="/login">
+        <div class="form-group">
+          <label for="phone">Phone Number</label>
+          <input id="phone" name="phone" type="tel" placeholder="+918129211707" value="{{ phone or '' }}" required autofocus>
+          <div class="hint">Include country code with + (e.g. +91 8129211707, +1 4155552671)</div>
+        </div>
+
+        <button type="submit" class="btn-primary">Send OTP Code</button>
+      </form>
+
+      <div class="footer-links">
+        <a href="/config">← Reconfigure API credentials</a>
+        <a href="/guide">Need help? Read guide</a>
+      </div>
+    </div>
+  </div>
 </body>
 </html>

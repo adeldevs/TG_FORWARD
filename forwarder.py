@@ -5,7 +5,7 @@ import asyncio
 import logging
 
 from decouple import config as getenv
-from telethon import TelegramClient, events
+from telethon import TelegramClient, events, utils
 from telethon.sessions import StringSession
 from telethon.errors import FloodWaitError
 
@@ -17,29 +17,41 @@ from telethon.errors import FloodWaitError
 api_id = int(getenv("API_ID"))
 api_hash = getenv("API_HASH")
 
-source_channel_id = int(getenv("SOURCE_CHANNEL"))
-target_channel_id = int(getenv("TARGET_CHANNEL"))
+def parse_id_list(raw_val):
+    if not raw_val:
+        return []
+    res = []
+    for part in str(raw_val).split(","):
+        part = part.strip()
+        if not part:
+            continue
+        try:
+            res.append(int(part))
+        except ValueError:
+            pass
+    return res
 
-source_channel = None
-target_channel = None
+raw_sources = getenv("SOURCE_CHANNELS", default=getenv("SOURCE_CHANNEL", default=""))
+source_channel_ids = parse_id_list(raw_sources)
 
-session_name = getenv("SESSION_NAME")
+raw_targets = getenv("TARGET_CHANNELS", default=getenv("TARGET_CHANNEL", default=""))
+target_channel_ids = parse_id_list(raw_targets)
 
-STATE_FILE = getenv("STATE_FILE")
-LOG_FILE = getenv("LOG_FILE")
+source_channels = []
+target_channels = []
+
+session_name = getenv("SESSION_NAME", default="forwarder_session")
+
+STATE_FILE = getenv("STATE_FILE", default="state.json")
+LOG_FILE = getenv("LOG_FILE", default="forwarder.log")
 
 
 # ============================================================
 # COOLDOWN SETTINGS
 # ============================================================
 
-# Wait between individual messages
 MESSAGE_DELAY = 5
-
-# After every N messages, take a longer break
 BATCH_SIZE = 20
-
-# Long break after each batch
 BATCH_COOLDOWN = 60
 
 
@@ -61,7 +73,6 @@ logger = logging.getLogger(__name__)
 # MEDIA TYPE FILTER
 # ============================================================
 
-# File extensions used to classify documents sent as files.
 VIDEO_EXTENSIONS = {
     ".mp4", ".mkv", ".avi", ".mov", ".webm", ".flv", ".wmv",
     ".m4v", ".mpeg", ".mpg", ".ts", ".m2ts", ".3gp", ".ogv",
@@ -80,21 +91,19 @@ TEXT_EXTENSIONS = {
 
 def allowed_media_types():
     """Return the set of media types allowed to forward, or None for all."""
-    raw = getenv("ALLOW_MEDIA_TYPES", default="all").strip()
-    if not raw or raw.lower() == "all":
+    raw = getenv("ALLOW_MEDIA_TYPES", default="all").strip().lower()
+    if not raw or raw == "all":
         return None
-    return {t.strip().lower() for t in raw.split(",") if t.strip()}
+    return {t.strip() for t in raw.split(",") if t.strip()}
 
 
 def classify_media(message):
-    """Classify a message's media: photo, video, audio, text, document or None."""
+    """Classify a message: photo, video, audio, text, document, or other."""
     if message.photo:
         return "photo"
     if message.video:
         return "video"
-    if message.audio:
-        return "audio"
-    if message.voice:
+    if message.audio or message.voice:
         return "audio"
     if message.document:
         filename = message.file.name if message.file else None
@@ -107,7 +116,9 @@ def classify_media(message):
             if ext in TEXT_EXTENSIONS:
                 return "text"
         return "document"
-    return None
+    if message.text:
+        return "text"
+    return "other"
 
 
 # ============================================================
@@ -135,81 +146,90 @@ else:
 # ============================================================
 
 async def resolve_channels():
-    global source_channel
-    global target_channel
+    global source_channels, target_channels
 
     print("Resolving Telegram channels...")
+    if not client.is_connected():
+        await client.connect()
 
-    dialogs = await client.get_dialogs()
+    source_channels = []
+    for sid in source_channel_ids:
+        try:
+            ent = await client.get_entity(sid)
+            source_channels.append(ent)
+            name = getattr(ent, 'title', None) or getattr(ent, 'username', str(sid))
+            print(f"  Source : {name} ({sid})")
+        except Exception as e:
+            logger.warning(f"Could not resolve source channel {sid}: {e}")
+            print(f"  [!] Failed to resolve source {sid}: {e}")
 
-    for dialog in dialogs:
+    target_channels = []
+    for tid in target_channel_ids:
+        try:
+            ent = await client.get_entity(tid)
+            target_channels.append(ent)
+            name = getattr(ent, 'title', None) or getattr(ent, 'username', str(tid))
+            print(f"  Target : {name} ({tid})")
+        except Exception as e:
+            logger.warning(f"Could not resolve target channel {tid}: {e}")
+            print(f"  [!] Failed to resolve target {tid}: {e}")
 
-        if dialog.id == source_channel_id:
-            source_channel = dialog.entity
+    if not source_channels:
+        raise ValueError("No source channels could be resolved. Check your configuration.")
+    if not target_channels:
+        raise ValueError("No target channels could be resolved. Check your configuration.")
 
-        if dialog.id == target_channel_id:
-            target_channel = dialog.entity
-
-    if source_channel is None:
-        raise ValueError(
-            f"Source channel {source_channel_id} "
-            "was not found in your Telegram dialogs."
-        )
-
-    if target_channel is None:
-        raise ValueError(
-            f"Target channel {target_channel_id} "
-            "was not found in your Telegram dialogs."
-        )
-
-    print(f"Source : {source_channel.title}")
-    print(f"Target : {target_channel.title}")
-
-    logger.info(
-        f"Resolved source={source_channel.title} "
-        f"target={target_channel.title}"
-    )
+    logger.info(f"Resolved {len(source_channels)} source(s) and {len(target_channels)} target(s)")
 
 
 # ============================================================
 # STATE
 # ============================================================
 
-def save_last_id(msg_id):
+def save_last_id(chat_id, msg_id):
+    state = {}
+    if os.path.exists(STATE_FILE):
+        try:
+            with open(STATE_FILE, "r") as f:
+                state = json.load(f)
+        except Exception:
+            state = {}
 
-    state = {
-        "last_id": msg_id,
-        "source": source_channel_id,
-        "target": target_channel_id
-    }
+    if "checkpoints" not in state:
+        state["checkpoints"] = {}
+
+    state["checkpoints"][str(chat_id)] = msg_id
+    state["last_id"] = msg_id
+    state["sources"] = source_channel_ids
+    state["targets"] = target_channel_ids
 
     with open(STATE_FILE, "w") as f:
-        json.dump(state, f)
+        json.dump(state, f, indent=2)
 
-    logger.info(
-        f"Saved last message ID {msg_id}"
-    )
+    logger.info(f"Saved last message ID {msg_id} for channel {chat_id}")
 
 
-def load_last_id():
-
+def load_last_id(chat_id):
     SKIP_BEFORE_ID = 963090
 
     if not os.path.exists(STATE_FILE):
         return SKIP_BEFORE_ID
 
-    with open(STATE_FILE, "r") as f:
-        state = json.load(f)
+    try:
+        with open(STATE_FILE, "r") as f:
+            state = json.load(f)
+    except Exception:
+        return SKIP_BEFORE_ID
 
-    last_id = state.get("last_id", 0)
+    checkpoints = state.get("checkpoints", {})
+    last_id = checkpoints.get(str(chat_id))
+    if last_id is None:
+        last_id = state.get("last_id", 0)
 
     if last_id < SKIP_BEFORE_ID:
         last_id = SKIP_BEFORE_ID
 
-    logger.info(
-        f"Resuming from message ID {last_id}"
-    )
-
+    logger.info(f"Resuming channel {chat_id} from message ID {last_id}")
     return last_id
 
 
@@ -217,13 +237,14 @@ def load_last_id():
 # FORWARD OLD MESSAGES
 # ============================================================
 
-async def copy_old_messages():
-
-    last_id = load_last_id()
+async def copy_old_messages_for_channel(source_ent):
+    peer_id = utils.get_peer_id(source_ent)
+    last_id = load_last_id(peer_id)
+    title = getattr(source_ent, 'title', None) or str(peer_id)
 
     print()
     print("======================================")
-    print(" HISTORICAL MEDIA MIGRATION")
+    print(f" HISTORICAL MIGRATION: {title}")
     print("======================================")
     print(f"Starting from message ID: {last_id}")
     print(f"Delay between uploads  : {MESSAGE_DELAY}s")
@@ -232,16 +253,7 @@ async def copy_old_messages():
     print("======================================")
     print()
 
-    logger.info(
-        f"Starting media migration from message ID {last_id}"
-    )
-
-    # Get the latest message ID so we can show progress.
-    latest_messages = await client.get_messages(
-        source_channel,
-        limit=1
-    )
-
+    latest_messages = await client.get_messages(source_ent, limit=1)
     latest_id = latest_messages[0].id if latest_messages else last_id
 
     print(f"Latest source message : {latest_id}")
@@ -253,292 +265,107 @@ async def copy_old_messages():
     scanned = 0
 
     async for message in client.iter_messages(
-        source_channel,
+        source_ent,
         reverse=True,
         min_id=last_id
     ):
-
         if not client.is_connected():
             await client.connect()
-            await resolve_channels()
 
         scanned += 1
 
         try:
-
-            # ------------------------------------------------
-            # DETERMINE WHETHER THIS IS MEDIA WE WANT
-            # ------------------------------------------------
-
             media_type = classify_media(message)
-            filename = message.file.name if message.file else None
-
             allowed = allowed_media_types()
-            if not media_type or (allowed is not None and media_type not in allowed):
 
-                skipped += 1
-                save_last_id(message.id)
+            if allowed is not None:
+                if not media_type or media_type not in allowed:
+                    skipped += 1
+                    save_last_id(peer_id, message.id)
+                    continue
 
-                print(
-                    f"[SKIP] {message.id} "
-                    f"({message.date.strftime('%Y-%m-%d %H:%M')})"
-                )
-
-                continue
-
-            # ------------------------------------------------
-            # SHOW UPLOAD INFORMATION
-            # ------------------------------------------------
-
-            remaining = max(0, latest_id - message.id)
-
+            filename = message.file.name if message.file else None
             display_name = filename or media_type
 
-            print()
-            print(
-                f"[UPLOAD] message {message.id} "
-                f"| {media_type} "
-                f"| {display_name}"
-            )
+            print(f"[FORWARD] {message.id} | {media_type} | {display_name}")
 
-            print(
-                f"         Uploaded : {uploaded}"
-            )
+            # Send to all target channels
+            for tgt in target_channels:
+                if message.media:
+                    await client.send_file(
+                        tgt,
+                        message.media,
+                        caption=message.text or ""
+                    )
+                elif message.text:
+                    await client.send_message(tgt, message.text)
 
-            print(
-                f"         Skipped  : {skipped}"
-            )
-
-            print(
-                f"         Scanned  : {scanned}"
-            )
-
-            print(
-                f"         Remaining: ~{remaining} message IDs"
-            )
-
-            # ------------------------------------------------
-            # UPLOAD MEDIA
-            # ------------------------------------------------
-
-            await client.send_file(
-                target_channel,
-                message.media,
-                caption=message.text or ""
-            )
-
-            # ------------------------------------------------
-            # SAVE STATE ONLY AFTER SUCCESS
-            # ------------------------------------------------
-
-            save_last_id(message.id)
-
+            save_last_id(peer_id, message.id)
             uploaded += 1
-
-            print(
-                f"[DONE] message {message.id} uploaded successfully"
-            )
-
-            # ------------------------------------------------
-            # NORMAL DELAY
-            # ------------------------------------------------
 
             await asyncio.sleep(MESSAGE_DELAY)
 
-            # ------------------------------------------------
-            # BATCH COOLDOWN
-            # ------------------------------------------------
-
             if uploaded % BATCH_SIZE == 0:
-
-                print()
-                print(
-                    f"--- {uploaded} media uploads completed ---"
-                )
-
-                print(
-                    f"Cooling down for {BATCH_COOLDOWN} seconds..."
-                )
-
-                logger.info(
-                    f"Batch cooldown after {uploaded} uploads"
-                )
-
+                print(f"--- {uploaded} messages forwarded. Cooldown for {BATCH_COOLDOWN}s... ---")
                 await asyncio.sleep(BATCH_COOLDOWN)
 
-                print(
-                    "Cooldown finished. Continuing..."
-                )
-                print()
-
-        # ----------------------------------------------------
-        # TELEGRAM FLOOD WAIT
-        # ----------------------------------------------------
-
         except FloodWaitError as e:
-
-            print()
-            print(
-                f"Telegram requested a {e.seconds}s cooldown."
-            )
-
-            print(
-                f"Sleeping for {e.seconds} seconds..."
-            )
-
-            logger.warning(
-                f"FloodWaitError: sleeping {e.seconds}s"
-            )
-
+            print(f"FloodWait: sleeping {e.seconds}s...")
             await asyncio.sleep(e.seconds)
-
-            print(
-                "Telegram cooldown finished."
-            )
-
-            print(
-                "Retrying message..."
-            )
-
-            # Do NOT save the state here.
-            # The same message will be retried.
-
-        # ----------------------------------------------------
-        # OTHER ERRORS
-        # ----------------------------------------------------
-
         except Exception as e:
+            print(f"ERROR on message {message.id}: {e}")
+            logger.error(f"Error on message {message.id}: {e}")
+            await asyncio.sleep(15)
 
-            print()
-            print(
-                f"ERROR on message {message.id}: {e}"
-            )
 
-            logger.error(
-                f"Error forwarding message "
-                f"{message.id}: {e}"
-            )
+async def copy_old_messages():
+    for src in source_channels:
+        await copy_old_messages_for_channel(src)
 
-            print(
-                "Checkpoint NOT advanced."
-            )
-
-            print(
-                "Waiting 30 seconds before retrying..."
-            )
-
-            if not client.is_connected():
-                try:
-                    await client.connect()
-                    await resolve_channels()
-                except Exception:
-                    pass
-
-            await asyncio.sleep(30)
-
-    print()
-    print("======================================")
-    print(" HISTORICAL MEDIA MIGRATION COMPLETE")
-    print("======================================")
-    print(f"Media uploaded : {uploaded}")
-    print(f"Messages skipped: {skipped}")
-    print(f"Messages scanned: {scanned}")
-    print()
-    print("Now listening for new messages...")
-    print()
-
-    logger.info(
-        f"Historical media migration complete. "
-        f"Uploaded={uploaded}, "
-        f"Skipped={skipped}, "
-        f"Scanned={scanned}"
-    )
 
 # ============================================================
-# FORWARD NEW MESSAGES
+# FORWARD NEW MESSAGES (LIVE EVENT LISTENER)
 # ============================================================
 
 @client.on(events.NewMessage)
 async def handler(event):
-
-    # Only process messages from our source channel
-    if event.chat_id != source_channel_id:
+    if event.chat_id not in source_channel_ids:
         return
 
     message = event.message
-
     if not client.is_connected():
         await client.connect()
-        await resolve_channels()
 
     try:
-
-        # ------------------------------------------------
-        # DETERMINE MEDIA TYPE
-        # ------------------------------------------------
-
         media_type = classify_media(message)
-        filename = message.file.name if message.file else None
-
         allowed = allowed_media_types()
-        if not media_type or (allowed is not None and media_type not in allowed):
 
-            logger.info(
-                f"Skipped new message {message.id} "
-                f"(not supported media)"
-            )
+        if allowed is not None:
+            if not media_type or media_type not in allowed:
+                save_last_id(event.chat_id, message.id)
+                return
 
-            # Advance checkpoint because this message is
-            # intentionally ignored.
-            save_last_id(message.id)
+        filename = message.file.name if message.file else None
+        print(f"[LIVE] New message {message.id} in {event.chat_id} ({filename or media_type})")
 
-            return
+        for tgt in target_channels:
+            if message.media:
+                await client.send_file(
+                    tgt,
+                    message.media,
+                    caption=message.text or ""
+                )
+            elif message.text:
+                await client.send_message(tgt, message.text)
 
-        # ------------------------------------------------
-        # UPLOAD
-        # ------------------------------------------------
-
-        print(
-            f"[LIVE UPLOAD] {message.id} "
-            f"| {media_type} "
-            f"| {filename or media_type}"
-        )
-
-        await client.send_file(
-            target_channel,
-            message.media,
-            caption=message.text or ""
-        )
-
-        # Save only after successful upload
-        save_last_id(message.id)
-
-        logger.info(
-            f"Forwarded new media message {message.id}"
-        )
-
-        print(
-            f"[LIVE DONE] {message.id}"
-        )
+        save_last_id(event.chat_id, message.id)
+        logger.info(f"Forwarded live message {message.id} from {event.chat_id}")
 
     except FloodWaitError as e:
-
-        print(
-            f"Telegram requested {e.seconds}s cooldown "
-            f"for new message {message.id}."
-        )
-
+        print(f"Flood wait {e.seconds}s for live message {message.id}")
         await asyncio.sleep(e.seconds)
-
-        # State is NOT advanced.
-        # The message can be handled again.
-
     except Exception as e:
-
-        logger.error(
-            f"Error forwarding new message "
-            f"{message.id}: {e}"
-        )
+        logger.error(f"Error forwarding new message {message.id}: {e}")
 
 
 # ============================================================
@@ -546,22 +373,13 @@ async def handler(event):
 # ============================================================
 
 async def main():
-
     await resolve_channels()
-
-    print()
-    print("Fetching old messages and forwarding...")
-    print()
-
+    print("Copying historical messages if any...")
     await copy_old_messages()
+    print("Now listening for new messages in real-time...")
 
 
-# ============================================================
-# RUN
-# ============================================================
-
-with client:
-
-    client.loop.run_until_complete(main())
-
-    client.run_until_disconnected()
+if __name__ == "__main__":
+    with client:
+        client.loop.run_until_complete(main())
+        client.run_until_disconnected()

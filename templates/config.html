@@ -2,37 +2,232 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>Telegram Forwarder – Config</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Telegram Forwarder – API Config</title>
+  <link rel="icon" href="/favicon.ico">
   <style>
-    body{font-family:system-ui,Arial,sans-serif;margin:2rem;background:#f5f5f5}
-    .container{max-width:600px;margin:auto}
-    h1{margin-bottom:1rem}
-    .panel{border:1px solid #ccc;border-radius:6px;padding:1rem;margin:1rem 0;background:#fafafa}
-    .panel h3{margin-top:0}
-    label{display:block;margin:.5rem 0 .25rem;font-weight:600}
-    input{width:100%;padding:.4rem;margin-bottom:.5rem;border:1px solid #ccc;border-radius:4px;box-sizing:border-box}
-    button{padding:.5rem 1rem;background:#2563eb;color:#fff;border:none;border-radius:4px;cursor:pointer}
-    button:hover{background:#1d4ed8}
-    .note{font-size:.85rem;color:#666;margin-top:.5rem}
+    :root {
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --text: #0f172a;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+      --danger: #ef4444;
+      --radius: 10px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+    .navbar {
+      background: var(--card-bg);
+      border-bottom: 1px solid var(--border);
+      padding: 0.8rem 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .navbar .brand {
+      font-weight: 700;
+      font-size: 1.15rem;
+      color: var(--primary);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .nav-links {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+    }
+    .nav-links a {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.95rem;
+      font-weight: 500;
+    }
+    .nav-links a:hover, .nav-links a.active {
+      color: var(--primary);
+    }
+    .container {
+      max-width: 620px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+    }
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 2rem;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    }
+    h1 {
+      margin-top: 0;
+      margin-bottom: 0.5rem;
+      font-size: 1.5rem;
+    }
+    p.subtitle {
+      color: var(--text-muted);
+      margin-top: 0;
+      margin-bottom: 1.5rem;
+      font-size: 0.95rem;
+    }
+    .form-group {
+      margin-bottom: 1.25rem;
+    }
+    label {
+      display: block;
+      margin-bottom: 0.35rem;
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+    input {
+      width: 100%;
+      padding: 0.65rem 0.85rem;
+      font-size: 0.95rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: #fff;
+      color: var(--text);
+    }
+    input:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+    }
+    .hint {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-top: 0.35rem;
+    }
+    button.btn-primary {
+      display: inline-flex;
+      justify-content: center;
+      align-items: center;
+      width: 100%;
+      padding: 0.75rem 1.25rem;
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    button.btn-primary:hover {
+      background: var(--primary-hover);
+    }
+    .alert {
+      padding: 0.85rem 1rem;
+      border-radius: 6px;
+      margin-bottom: 1.25rem;
+      font-size: 0.9rem;
+    }
+    .alert-info {
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      color: #1e40af;
+    }
+    .alert-success {
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      color: #166534;
+    }
+    .guide-box {
+      margin-top: 1.5rem;
+      padding: 1rem;
+      background: #f1f5f9;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      color: #334155;
+    }
+    .guide-box a {
+      color: var(--primary);
+      font-weight: 600;
+      text-decoration: none;
+    }
+    .guide-box a:hover {
+      text-decoration: underline;
+    }
   </style>
 </head>
-<body class="container">
-  <h1>Telegram API Config</h1>
-  <form method="post" action="/config" class="panel">
-    <label>API ID</label>
-    <input name="API_ID" value="{{ api_id }}" required>
-    <label>API Hash</label>
-    <input name="API_HASH" value="{{ api_hash }}" required>
-    <label>Session Name</label>
-    <input name="SESSION_NAME" value="{{ session_name }}" placeholder="forwarder_session">
-    <label>Session String (optional, leave blank to log in fresh)</label>
-    <input name="SESSION_STRING" value="{{ session_string }}">
-    <label>Source Channel (@username or ID)</label>
-    <input name="SOURCE_CHANNEL" value="{{ source_channel }}" required>
-    <label>Target Channel (@username or ID)</label>
-    <input name="TARGET_CHANNEL" value="{{ target_channel }}" required>
-    <button type="submit">Save & Continue</button>
-  </form>
-  <p class="note">Get your API_ID and API_HASH from https://my.telegram.org/apps</p>
+<body>
+  <nav class="navbar">
+    <a href="/" class="brand">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+      Telegram Forwarder
+    </a>
+    <div class="nav-links">
+      {% if is_logged_in %}
+        <a href="/channels">Channels</a>
+      {% endif %}
+      <a href="/config" class="active">Config</a>
+      <a href="/guide">Guide</a>
+      {% if is_logged_in %}
+        <a href="/logout" onclick="return confirm('Log out and clear session data?')" style="color:var(--danger)">Log Out</a>
+      {% endif %}
+    </div>
+  </nav>
+
+  <div class="container">
+    <div class="card">
+      <h1>Telegram API Configuration</h1>
+      <p class="subtitle">Set your Telegram Developer credentials. Channel selection is handled separately on the Channels page.</p>
+
+      {% if is_logged_in %}
+        <div class="alert alert-success">
+          ✓ Telegram session is connected and active. You can go straight to <a href="/channels" style="font-weight:bold;color:#166534;">Channels</a> to pick source & destination.
+        </div>
+      {% elif api_id and api_hash %}
+        <div class="alert alert-info">
+          ℹ API credentials are saved. Proceed to <a href="/login" style="font-weight:bold;color:#1e40af;">Login</a> with your phone number.
+        </div>
+      {% endif %}
+
+      <form method="post" action="/config">
+        <div class="form-group">
+          <label for="API_ID">API ID <span style="color:var(--danger)">*</span></label>
+          <input id="API_ID" name="API_ID" type="number" value="{{ api_id }}" placeholder="e.g. 12345678" required>
+          <div class="hint">Numeric App API ID from my.telegram.org</div>
+        </div>
+
+        <div class="form-group">
+          <label for="API_HASH">API Hash <span style="color:var(--danger)">*</span></label>
+          <input id="API_HASH" name="API_HASH" type="text" value="{{ api_hash }}" placeholder="e.g. 0a5921d9084251727dad3ebdf4fdbf86" required>
+          <div class="hint">32-character hexadecimal string</div>
+        </div>
+
+        <div class="form-group">
+          <label for="SESSION_NAME">Session Name (optional)</label>
+          <input id="SESSION_NAME" name="SESSION_NAME" type="text" value="{{ session_name or 'forwarder_session' }}">
+          <div class="hint">Defaults to forwarder_session</div>
+        </div>
+
+        <div class="form-group">
+          <label for="SESSION_STRING">Session String (optional)</label>
+          <input id="SESSION_STRING" name="SESSION_STRING" type="text" value="{{ session_string }}" placeholder="Paste StringSession if you already have one">
+          <div class="hint">If provided, OTP login will be skipped automatically</div>
+        </div>
+
+        <button type="submit" class="btn-primary">Save & Continue</button>
+      </form>
+
+      <div class="guide-box">
+        <strong>Need Telegram credentials?</strong><br>
+        1. Log in to <a href="https://my.telegram.org" target="_blank">my.telegram.org</a>.<br>
+        2. Go to <strong>API Development tools</strong>.<br>
+        3. Create an app (any title/short name) to get your <code>API_ID</code> and <code>API_HASH</code>.
+      </div>
+    </div>
+  </div>
 </body>
 </html>

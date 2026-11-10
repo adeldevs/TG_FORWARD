@@ -2,23 +2,211 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>Telegram Forwarder – OTP</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Telegram Forwarder – Verify OTP</title>
+  <link rel="icon" href="/favicon.ico">
   <style>
-    body{font-family:system-ui,Arial,sans-serif;margin:2rem;background:#f5f5f5}
-    .card{max-width:400px;padding:2rem;border:1px solid #ddd;border-radius:8px;background:#fff}
-    input{width:100%;padding:.5rem;margin .5rem 0;}
-    button{padding:.6rem 1rem;}
+    :root {
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --text: #0f172a;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+      --danger: #ef4444;
+      --radius: 10px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+    .navbar {
+      background: var(--card-bg);
+      border-bottom: 1px solid var(--border);
+      padding: 0.8rem 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .navbar .brand {
+      font-weight: 700;
+      font-size: 1.15rem;
+      color: var(--primary);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .container {
+      max-width: 480px;
+      margin: 3rem auto;
+      padding: 0 1rem;
+    }
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 2rem;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    }
+    h2 {
+      margin-top: 0;
+      margin-bottom: 0.5rem;
+      font-size: 1.35rem;
+    }
+    p.subtitle {
+      color: var(--text-muted);
+      margin-top: 0;
+      margin-bottom: 1.5rem;
+      font-size: 0.9rem;
+    }
+    .phone-badge {
+      display: inline-block;
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      color: #1d4ed8;
+      padding: 0.25rem 0.6rem;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 0.95rem;
+      margin-bottom: 1rem;
+    }
+    .form-group {
+      margin-bottom: 1.25rem;
+    }
+    label {
+      display: block;
+      margin-bottom: 0.35rem;
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+    input {
+      width: 100%;
+      padding: 0.65rem 0.85rem;
+      font-size: 1.1rem;
+      letter-spacing: 0.1em;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: #fff;
+    }
+    input:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+    }
+    .hint {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-top: 0.35rem;
+    }
+    button.btn-primary {
+      display: inline-flex;
+      justify-content: center;
+      align-items: center;
+      width: 100%;
+      padding: 0.75rem 1.25rem;
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    button.btn-primary:hover {
+      background: var(--primary-hover);
+    }
+    .alert {
+      padding: 0.85rem 1rem;
+      border-radius: 6px;
+      margin-bottom: 1.25rem;
+      font-size: 0.9rem;
+    }
+    .alert-danger {
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      color: #b91c1c;
+    }
+    .footer-links {
+      margin-top: 1.25rem;
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.85rem;
+    }
+    .footer-links a {
+      color: var(--primary);
+      text-decoration: none;
+    }
+    .footer-links a:hover {
+      text-decoration: underline;
+    }
   </style>
 </head>
 <body>
-<div class="card">
-  <h2>Enter OTP sent to your phone</h2>
-  <p>Phone: <code>{{ phone }}</code></p>
-  <form method="post">
-    <input name="code" placeholder="12345" required>
-    <button type="submit">Verify</button>
-  </form>
-  <p><a href="/">Back</a></p>
-</div>
+  <nav class="navbar">
+    <a href="/" class="brand">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+      Telegram Forwarder
+    </a>
+  </nav>
+
+  <div class="container">
+    <div class="card">
+      <h2>Enter Verification Code</h2>
+      <p class="subtitle">A code was sent to your Telegram app (or SMS).</p>
+
+      {% if phone %}
+        <div>Phone: <span class="phone-badge">{{ phone }}</span></div>
+      {% endif %}
+
+      {% if error %}
+        <div class="alert alert-danger">
+          ⚠ {{ error }}
+        </div>
+      {% endif %}
+
+      <form method="post" action="/otp?phone={{ phone|urlencode }}">
+        <input type="hidden" name="phone" value="{{ phone }}">
+
+        <div class="form-group">
+          <label for="code">Telegram Login Code <span style="color:var(--danger)">*</span></label>
+          <input id="code" name="code" type="text" inputmode="numeric" placeholder="12345" required autofocus>
+          <div class="hint">Check Telegram on your other devices for the login code</div>
+        </div>
+
+        {% if requires_password %}
+          <div class="form-group" style="background: #fefce8; padding: 1rem; border-radius: 6px; border: 1px solid #fef08a;">
+            <label for="password" style="color: #854d0e;">Two-Step Verification Password (2FA)</label>
+            <input id="password" name="password" type="password" placeholder="Enter your 2FA password" required style="letter-spacing:normal;">
+            <div class="hint" style="color: #a16207;">Your account has Two-Step Verification enabled. Enter your cloud password.</div>
+          </div>
+        {% else %}
+          <div class="form-group">
+            <details>
+              <summary style="cursor:pointer; font-size:0.85rem; color:var(--text-muted);">Have Two-Step Verification (2FA) password enabled?</summary>
+              <div style="margin-top:0.5rem;">
+                <label for="password" style="font-size:0.85rem;">2FA Cloud Password (optional)</label>
+                <input id="password" name="password" type="password" placeholder="Cloud password (if enabled)" style="letter-spacing:normal;font-size:0.95rem;">
+              </div>
+            </details>
+          </div>
+        {% endif %}
+
+        <button type="submit" class="btn-primary">Verify & Log In</button>
+      </form>
+
+      <div class="footer-links">
+        <a href="/login">← Wrong number? Change phone</a>
+        <a href="/config">Config</a>
+      </div>
+    </div>
+  </div>
 </body>
 </html>
