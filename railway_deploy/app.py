@@ -261,14 +261,13 @@ def _get_client():
         api_id_raw = env.get("API_ID") or os.getenv("API_ID", "0")
         api_id = int(api_id_raw) if api_id_raw and api_id_raw.isdigit() else 0
         api_hash = env.get("API_HASH") or os.getenv("API_HASH", "")
-        session_string = env.get("SESSION_STRING") or os.getenv("SESSION_STRING", None)
-        session_name = env.get("SESSION_NAME") or os.getenv("SESSION_NAME", "forwarder_session")
+        session_string = env.get("SESSION_STRING") or os.getenv("SESSION_STRING", "")
+        if not session_string or str(session_string).strip() in ("None", "null", ""):
+            session_string = ""
 
         if api_id and api_hash:
-            if session_string:
-                _client = TelegramClient(StringSession(session_string), api_id, api_hash, loop=_loop)
-            else:
-                _client = TelegramClient(session_name, api_id, api_hash, loop=_loop)
+            # ALWAYS use StringSession for cloud and container compatibility
+            _client = TelegramClient(StringSession(session_string), api_id, api_hash, loop=_loop)
     return _client
 
 
@@ -387,9 +386,12 @@ app.secret_key = os.urandom(24)
 
 
 @app.route("/favicon.ico")
+@app.route("/favicon.svg")
 def favicon():
     svg_icon = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#2563eb"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 0 0-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.75-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z"/></svg>"""
-    return Response(svg_icon, mimetype="image/svg+xml")
+    resp = Response(svg_icon, mimetype="image/svg+xml")
+    resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    return resp
 
 
 # ------------------------------------------------------------------
@@ -468,6 +470,13 @@ def login():
     if not (env.get("API_ID") or os.getenv("API_ID")) or not (env.get("API_HASH") or os.getenv("API_HASH")):
         return redirect(url_for("config"))
 
+    # If already logged in, go straight to channels
+    try:
+        if _run(_is_authorized(), timeout=5):
+            return redirect(url_for("channels"))
+    except Exception:
+        pass
+
     logged_out = request.args.get("logged_out") == "1"
 
     if request.method == "POST":
@@ -484,10 +493,12 @@ def login():
         try:
             res = _run(send_code(), timeout=20)
             _phone_code_hashes[phone] = res.phone_code_hash
+            print(f"[Login] Code requested for {phone}")
             return redirect(url_for("otp", phone=phone))
         except FloodWaitError as e:
             return render_template("login.html", error=f"Telegram flood wait: please wait {e.seconds} seconds before trying again.", phone=phone, logged_out=False)
         except Exception as exc:
+            print(f"[Login Error] {type(exc).__name__}: {exc}")
             return render_template("login.html", error=f"Error sending login code: {exc}", phone=phone, logged_out=False)
 
     return render_template("login.html", logged_out=logged_out)
@@ -503,6 +514,14 @@ def otp():
         return redirect(url_for("login"))
 
     client = _get_client()
+
+    # Check if already authorized
+    try:
+        if _run(_is_authorized(), timeout=5):
+            return redirect(url_for("channels"))
+    except Exception:
+        pass
+
     if request.method == "POST":
         code = request.form.get("code", "").strip()
         password = request.form.get("password", "").strip()
@@ -511,36 +530,61 @@ def otp():
         async def sign_in():
             if not client.is_connected():
                 await client.connect()
-            try:
-                if code_hash:
-                    await client.sign_in(phone=phone, code=code, phone_code_hash=code_hash)
-                else:
-                    await client.sign_in(phone=phone, code=code)
-            except SessionPasswordNeededError:
-                if password:
-                    await client.sign_in(password=password)
-                else:
-                    raise
+            if await client.is_user_authorized():
+                return
+
+            # Pure 2FA password submission
+            if password and not code:
+                await client.sign_in(password=password)
+                return
+
+            if code:
+                try:
+                    if code_hash:
+                        await client.sign_in(phone=phone, code=code, phone_code_hash=code_hash)
+                    else:
+                        await client.sign_in(phone=phone, code=code)
+                except SessionPasswordNeededError:
+                    if password:
+                        await client.sign_in(password=password)
+                    else:
+                        raise
 
         try:
             _run(sign_in(), timeout=20)
-            # Save session string
             session_str = client.session.save()
-            _write_env({"SESSION_STRING": session_str})
-            os.environ["SESSION_STRING"] = session_str
+            if session_str and len(session_str) > 10:
+                _write_env({"SESSION_STRING": session_str})
+                os.environ["SESSION_STRING"] = session_str
+                print(f"[OTP Success] Telegram session saved (len={len(session_str)})")
             return redirect(url_for("channels"))
         except SessionPasswordNeededError:
+            print(f"[OTP] 2FA password needed for {phone}")
             return render_template(
                 "otp.html",
                 phone=phone,
+                code=code,
                 requires_password=True,
-                error="Two-step verification (2FA) is enabled on your account. Please enter your cloud password.",
+                error="Two-step verification (2FA) is enabled on your account. Please enter your cloud password below.",
             )
         except Exception as exc:
+            print(f"[OTP Error] {type(exc).__name__}: {exc}")
+            # Check if despite error client is actually authorized
+            try:
+                if _run(client.is_user_authorized(), timeout=5):
+                    session_str = client.session.save()
+                    if session_str and len(session_str) > 10:
+                        _write_env({"SESSION_STRING": session_str})
+                        os.environ["SESSION_STRING"] = session_str
+                    return redirect(url_for("channels"))
+            except Exception:
+                pass
+
             return render_template(
                 "otp.html",
                 phone=phone,
-                requires_password=False,
+                code=code,
+                requires_password=bool(password),
                 error=f"Sign in failed: {exc}",
             )
 

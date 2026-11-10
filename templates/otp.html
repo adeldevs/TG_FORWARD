@@ -4,7 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Telegram Forwarder – Verify OTP</title>
-  <link rel="icon" href="/favicon.ico">
+  <link rel="icon" type="image/svg+xml" href="/favicon.ico?v=2">
+  <link rel="shortcut icon" href="/favicon.ico?v=2">
   <style>
     :root {
       --primary: #2563eb;
@@ -175,19 +176,20 @@
       <form method="post" action="/otp?phone={{ phone|urlencode }}">
         <input type="hidden" name="phone" value="{{ phone }}">
 
-        <div class="form-group">
-          <label for="code">Telegram Login Code <span style="color:var(--danger)">*</span></label>
-          <input id="code" name="code" type="text" inputmode="numeric" placeholder="12345" required autofocus>
-          <div class="hint">Check Telegram on your other devices for the login code</div>
-        </div>
-
         {% if requires_password %}
-          <div class="form-group" style="background: #fefce8; padding: 1rem; border-radius: 6px; border: 1px solid #fef08a;">
-            <label for="password" style="color: #854d0e;">Two-Step Verification Password (2FA)</label>
-            <input id="password" name="password" type="password" placeholder="Enter your 2FA password" required style="letter-spacing:normal;">
-            <div class="hint" style="color: #a16207;">Your account has Two-Step Verification enabled. Enter your cloud password.</div>
+          <div class="form-group" style="background: #fefce8; padding: 1.25rem; border-radius: 6px; border: 1px solid #fef08a; margin-bottom: 1.25rem;">
+            <label for="password" style="color: #854d0e; font-weight: 700; font-size: 1rem;">Two-Step Verification Password (2FA) <span style="color:var(--danger)">*</span></label>
+            <input id="password" name="password" type="password" placeholder="Enter your 2FA password" required autofocus style="letter-spacing:normal; margin-top:0.5rem; font-size:1rem;">
+            <div class="hint" style="color: #a16207; margin-top:0.5rem;">Your account has Two-Step Verification enabled. Enter your cloud password to complete login.</div>
           </div>
+          <input type="hidden" name="code" value="{{ code or '' }}">
         {% else %}
+          <div class="form-group">
+            <label for="code">Telegram Login Code <span style="color:var(--danger)">*</span></label>
+            <input id="code" name="code" type="text" inputmode="numeric" placeholder="12345" value="{{ code or '' }}" required autofocus>
+            <div class="hint">Check Telegram on your other devices for the login code</div>
+          </div>
+
           <div class="form-group">
             <details>
               <summary style="cursor:pointer; font-size:0.85rem; color:var(--text-muted);">Have Two-Step Verification (2FA) password enabled?</summary>
